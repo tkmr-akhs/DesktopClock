@@ -1,8 +1,5 @@
 ﻿using System.Text;
-
-using DesktopClock.Core.Contracts.Services;
-
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace DesktopClock.Core.Services;
 
@@ -14,7 +11,7 @@ public class FileService : IFileService
         if (File.Exists(path))
         {
             var json = File.ReadAllText(path);
-            return JsonConvert.DeserializeObject<T>(json);
+            return JsonSerializer.Deserialize<T>(json);
         }
 
         return default;
@@ -27,7 +24,7 @@ public class FileService : IFileService
             Directory.CreateDirectory(folderPath);
         }
 
-        var fileContent = JsonConvert.SerializeObject(content);
+        var fileContent = JsonSerializer.Serialize(content);
         File.WriteAllText(Path.Combine(folderPath, fileName), fileContent, Encoding.UTF8);
     }
 

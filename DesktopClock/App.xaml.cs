@@ -1,17 +1,13 @@
-﻿using DesktopClock.Activation;
-using DesktopClock.Contracts.Services;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.UI.Xaml;
+using DesktopClock.Activation;
 using DesktopClock.Core.Contracts.Services;
 using DesktopClock.Core.Services;
-using DesktopClock.Helpers;
 using DesktopClock.Models;
-using DesktopClock.Notifications;
 using DesktopClock.Services;
 using DesktopClock.ViewModels;
 using DesktopClock.Views;
-
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.UI.Xaml;
 
 namespace DesktopClock;
 
@@ -56,34 +52,37 @@ public partial class App : Application
             services.AddTransient<ActivationHandler<LaunchActivatedEventArgs>, DefaultActivationHandler>();
 
             // Other Activation Handlers
-            services.AddTransient<IActivationHandler, AppNotificationActivationHandler>();
 
             // Services
-            services.AddSingleton<IAppNotificationService, AppNotificationService>();
+            services.AddSingleton<ILoggingService, LoggingService>();
             services.AddSingleton<ILocalSettingsService, LocalSettingsService>();
+            services.AddSingleton<IAutoStartSelectorService, AutoStartSelectorService>();
+            services.AddSingleton<ILocalSettingsDataStoreService, LocalSettingsDataStoreService>();
             services.AddSingleton<IThemeSelectorService, ThemeSelectorService>();
-            services.AddTransient<IWebViewService, WebViewService>();
             services.AddSingleton<IActivationService, ActivationService>();
             services.AddSingleton<IPageService, PageService>();
             services.AddSingleton<INavigationService, NavigationService>();
+            services.AddSingleton<IDateTimeProviderService, DateTimeProviderService>();
+            services.AddSingleton<IHourStyleSelectorService, HourStyleSelectorService>();
+            services.AddSingleton<IMinuteStyleSelectorService, MinuteStyleSelectorService>();
+            services.AddSingleton<IDateStyleSelectorService, DateStyleSelectorService>();
+            services.AddSingleton<ICalendarStyleSelectorService, CalendarStyleSelectorService>();
+            services.AddSingleton<IWindowRepositoryService, WindowRepositoryService>();
+            services.AddSingleton<IWindowAlignmentSelectorService, WindowAlignmentSelectorService>();
+            services.AddSingleton<IScreenChangeDetectionService, ScreenChangedDetectionService>();
+            services.AddSingleton<IMonthlyCalendarService, MonthlyCalendarService>();
+            services.AddSingleton<IGooglePkceService, GooglePkceService>();
+            services.AddSingleton<IGoogleCalendarService, GoogleCalendarService>();
 
             // Core Services
-            services.AddSingleton<ISampleDataService, SampleDataService>();
             services.AddSingleton<IFileService, FileService>();
+            services.AddSingleton<IDispatcherQueueService, DispatcherQueueService>();
 
             // Views and ViewModels
-            services.AddTransient<SettingsViewModel>();
-            services.AddTransient<SettingsPage>();
-            services.AddTransient<データグリッドViewModel>();
-            services.AddTransient<データグリッドPage>();
-            services.AddTransient<コンテンツグリッドDetailViewModel>();
-            services.AddTransient<コンテンツグリッドDetailPage>();
-            services.AddTransient<コンテンツグリッドViewModel>();
-            services.AddTransient<コンテンツグリッドPage>();
-            services.AddTransient<詳細を一覧表示ViewModel>();
-            services.AddTransient<詳細を一覧表示Page>();
-            services.AddTransient<Web表示ViewModel>();
-            services.AddTransient<Web表示Page>();
+            services.AddTransient<CalendarViewModel>();
+            services.AddTransient<CalendarPage>();
+            services.AddTransient<ClockViewModel>();
+            services.AddTransient<ClockPage>();
             services.AddTransient<MainViewModel>();
             services.AddTransient<MainPage>();
 
@@ -91,8 +90,6 @@ public partial class App : Application
             services.Configure<LocalSettingsOptions>(context.Configuration.GetSection(nameof(LocalSettingsOptions)));
         }).
         Build();
-
-        App.GetService<IAppNotificationService>().Initialize();
 
         UnhandledException += App_UnhandledException;
     }
@@ -106,8 +103,6 @@ public partial class App : Application
     protected async override void OnLaunched(LaunchActivatedEventArgs args)
     {
         base.OnLaunched(args);
-
-        App.GetService<IAppNotificationService>().Show(string.Format("AppNotificationSamplePayload".GetLocalized(), AppContext.BaseDirectory));
 
         await App.GetService<IActivationService>().ActivateAsync(args);
     }

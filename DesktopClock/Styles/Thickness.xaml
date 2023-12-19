@@ -32,5 +32,10 @@
     <Thickness x:Key="MenuBarContentMargin">36,24,36,0</Thickness>
 
     <Thickness x:Key="SettingsPageHyperlinkButtonMargin">-12,4,0,0</Thickness>
-    
+
+    <Thickness x:Key="SettingsFirstCategoryMargin">0,0,0,5</Thickness>
+    <Thickness x:Key="SettingsCategoryMargin">0,10,0,5</Thickness>
+    <Thickness x:Key="SettingsItemMargin">10,14,10,0</Thickness>
+    <Thickness x:Key="SettingsItemContentMargin">10,10,10,0</Thickness>
+    <Thickness x:Key="SettingsItemLastContentMargin">10,10,10,10</Thickness>
 </ResourceDictionary>

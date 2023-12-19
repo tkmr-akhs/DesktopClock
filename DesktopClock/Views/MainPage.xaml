@@ -4,23 +4,430 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-    mc:Ignorable="d">
+    xmlns:helpers="using:DesktopClock.Helpers"
+    xmlns:models="using:DesktopClock.Models"
+    xmlns:xaml="using:Microsoft.UI.Xaml"
+    mc:Ignorable="d"
+    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+    <Page.Resources>
+        <helpers:ElementThemeToBooleanConverter x:Key="ElementThemeToBooleanConverter" />
+        <helpers:WindowAlignmentToBooleanConverter x:Key="WindowAlignmentToBooleanConverter" />
+        <helpers:WindowAlignmentUnitToBooleanConverter x:Key="WindowAlignmentUnitToBooleanConverter" />
+        <helpers:GoogleCalendarDisplayTypeToBooleanConverter x:Key="GoogleCalendarDisplayTypeToBooleanConverter" />
+        <helpers:BooleanToAuthenticationStatusConverter x:Key="BooleanToAuthenticationStatusConverter" />
+    </Page.Resources>
+    <ScrollViewer>
+        <Grid Padding="10,0,10,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="48" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-    <Grid x:Name="ContentArea">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="48" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0"
+                       x:Uid="Settings_Title"
+                       Style="{StaticResource PageTitleStyle}" />
+            <StackPanel Grid.Row="1"
+                        x:Name="ContentArea">
 
-        <TextBlock
-            Grid.Row="0"
-            x:Uid="Main_Title"
-            Style="{StaticResource PageTitleStyle}" />
+                <Border Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                    <TextBlock x:Uid="Settings_Personalization" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                </Border>
 
-        <Grid Grid.Row="1">
-            
+                <Grid Style="{StaticResource SettingsCategoryGridStyle}" Margin="{StaticResource SmallTopBottomMargin}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Row="0" Grid.Column="3" Grid.RowSpan="15" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                        <Rectangle Width="20" VerticalAlignment="Stretch" />
+                    </Border>
+                    
+                    
+                    
+                    <!-- Alignment -->
+                    
+                    <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                        <TextBlock x:Uid="Settings_Alignment" Style="{StaticResource SettingsCategoryStyle}" Margin="{StaticResource SettingsFirstCategoryMargin}" />
+                    </Border>
+
+                    <Border Grid.Row="1" Grid.Column="0" Grid.RowSpan="4" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                        <Rectangle Width="20" VerticalAlignment="Stretch" />
+                    </Border>
+
+                    <!-- Alignment: Unit -->
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="1"
+                               x:Uid="Settings_Alignment_Unit"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <StackPanel Grid.Row="1" Grid.Column="2"
+                                Orientation="Horizontal"
+                                Margin="{StaticResource SettingsItemContentMargin}">
+                        <RadioButton x:Uid="Settings_Unit_Percent"
+                        Command="{x:Bind ViewModel.ChangeMarginUnitCommand}"
+                        IsChecked="{x:Bind ViewModel.MarginUnit, Converter={StaticResource WindowAlignmentUnitToBooleanConverter}, ConverterParameter=Percent, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="MarginUnit">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignmentUnit>Percent</models:WindowAlignmentUnit>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+                        <RadioButton x:Uid="Settings_Unit_Pixel"
+                        Command="{x:Bind ViewModel.ChangeMarginUnitCommand}"
+                        IsChecked="{x:Bind ViewModel.MarginUnit, Converter={StaticResource WindowAlignmentUnitToBooleanConverter}, ConverterParameter=Pixel, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="MarginUnit">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignmentUnit>Pixel</models:WindowAlignmentUnit>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+                    </StackPanel>
+
+                    <!-- Alignment: Vertical Margin -->
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="1"
+                               x:Uid="Settings_Alignment_Vertical_Margin"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <NumberBox Grid.Row="2" Grid.Column="2"
+                               Margin="{StaticResource SettingsItemContentMargin}"
+                               Value="{x:Bind ViewModel.VerticalMargin, Mode=TwoWay}"
+                               Minimum="0"
+                               ValidationMode="InvalidInputOverwritten">
+                    </NumberBox>
+
+                    <!-- Alignment: Horizontal Margin -->
+                    
+                    <TextBlock Grid.Row="3" Grid.Column="1"
+                               x:Uid="Settings_Alignment_Horizontal_Margin"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <NumberBox Grid.Row="3" Grid.Column="2"
+                               Margin="{StaticResource SettingsItemContentMargin}"
+                               Value="{x:Bind ViewModel.HorizontalMargin, Mode=TwoWay}"
+                               Minimum="0"
+                               ValidationMode="InvalidInputOverwritten" />
+
+                    <!-- Alignment: Position -->
+                    
+                    <TextBlock Grid.Row="4" Grid.Column="1"
+                               x:Uid="Settings_Alignment_Position"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <Grid Grid.Row="4" Grid.Column="2"
+                          Margin="{StaticResource SettingsItemLastContentMargin}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <RadioButton
+                        Grid.Row="0" Grid.Column="0"
+                        x:Uid="Settings_Alignment_Position_TopLeft"
+                        Command="{x:Bind ViewModel.ChangeAlignmentCommand}"
+                        IsChecked="{x:Bind ViewModel.Alignment, Converter={StaticResource WindowAlignmentToBooleanConverter}, ConverterParameter=TopLeft, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="Alignment">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignment>TopLeft</models:WindowAlignment>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+
+                        <RadioButton
+                        Grid.Row="0" Grid.Column="1"
+                        x:Uid="Settings_Alignment_Position_TopCenter"
+                        Command="{x:Bind ViewModel.ChangeAlignmentCommand}"
+                        IsChecked="{x:Bind ViewModel.Alignment, Converter={StaticResource WindowAlignmentToBooleanConverter}, ConverterParameter=TopCenter, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="Alignment">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignment>TopCenter</models:WindowAlignment>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+
+                        <RadioButton
+                        Grid.Row="0" Grid.Column="2"
+                        x:Uid="Settings_Alignment_Position_TopRight"
+                        Command="{x:Bind ViewModel.ChangeAlignmentCommand}"
+                        IsChecked="{x:Bind ViewModel.Alignment, Converter={StaticResource WindowAlignmentToBooleanConverter}, ConverterParameter=TopRight, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="Alignment">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignment>TopRight</models:WindowAlignment>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+
+                        <RadioButton
+                        Grid.Row="1" Grid.Column="0"
+                        x:Uid="Settings_Alignment_Position_CenterLeft"
+                        Command="{x:Bind ViewModel.ChangeAlignmentCommand}"
+                        IsChecked="{x:Bind ViewModel.Alignment, Converter={StaticResource WindowAlignmentToBooleanConverter}, ConverterParameter=CenterLeft, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="Alignment">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignment>CenterLeft</models:WindowAlignment>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+
+                        <RadioButton
+                        Grid.Row="1" Grid.Column="1"
+                        x:Uid="Settings_Alignment_Position_CenterCenter"
+                        Command="{x:Bind ViewModel.ChangeAlignmentCommand}"
+                        IsChecked="{x:Bind ViewModel.Alignment, Converter={StaticResource WindowAlignmentToBooleanConverter}, ConverterParameter=CenterCenter, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="Alignment">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignment>CenterCenter</models:WindowAlignment>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+
+                        <RadioButton
+                        Grid.Row="1" Grid.Column="2"
+                        x:Uid="Settings_Alignment_Position_CenterRight"
+                        Command="{x:Bind ViewModel.ChangeAlignmentCommand}"
+                        IsChecked="{x:Bind ViewModel.Alignment, Converter={StaticResource WindowAlignmentToBooleanConverter}, ConverterParameter=CenterRight, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="Alignment">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignment>CenterRight</models:WindowAlignment>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+
+                        <RadioButton
+                        Grid.Row="2" Grid.Column="0"
+                        x:Uid="Settings_Alignment_Position_BottomLeft"
+                        Command="{x:Bind ViewModel.ChangeAlignmentCommand}"
+                        IsChecked="{x:Bind ViewModel.Alignment, Converter={StaticResource WindowAlignmentToBooleanConverter}, ConverterParameter=BottomLeft, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="Alignment">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignment>BottomLeft</models:WindowAlignment>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+
+                        <RadioButton
+                        Grid.Row="2" Grid.Column="1"
+                        x:Uid="Settings_Alignment_Position_BottomCenter"
+                        Command="{x:Bind ViewModel.ChangeAlignmentCommand}"
+                        IsChecked="{x:Bind ViewModel.Alignment, Converter={StaticResource WindowAlignmentToBooleanConverter}, ConverterParameter=BottomCenter, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="Alignment">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignment>BottomCenter</models:WindowAlignment>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+
+                        <RadioButton
+                        Grid.Row="2" Grid.Column="2"
+                        x:Uid="Settings_Alignment_Position_BottomRight"
+                        Command="{x:Bind ViewModel.ChangeAlignmentCommand}"
+                        IsChecked="{x:Bind ViewModel.Alignment, Converter={StaticResource WindowAlignmentToBooleanConverter}, ConverterParameter=BottomRight, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="Alignment">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignment>BottomRight</models:WindowAlignment>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+                    </Grid>
+
+
+
+                    <!-- Clock -->
+                    
+                    <Border Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                        <TextBlock x:Uid="Settings_Clock" Style="{StaticResource SettingsCategoryStyle}" Margin="{StaticResource SettingsCategoryMargin}" />
+                    </Border>
+
+                    <Border Grid.Row="6" Grid.Column="0" Grid.RowSpan="4" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                        <Rectangle Width="20" VerticalAlignment="Stretch" />
+                    </Border>
+
+                    <!-- Clock: Unit -->
+
+                    <TextBlock Grid.Row="6" Grid.Column="1"
+                               x:Uid="Settings_Clock_Unit"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <StackPanel Grid.Row="6" Grid.Column="2"
+                                Margin="{StaticResource SettingsItemContentMargin}"
+                                Orientation="Horizontal">
+                        <RadioButton x:Uid="Settings_Unit_Percent"
+                        Command="{x:Bind ViewModel.ChangeClockSizeUnitCommand}"
+                        IsChecked="{x:Bind ViewModel.ClockSizeUnit, Converter={StaticResource WindowAlignmentUnitToBooleanConverter}, ConverterParameter=Percent, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="ClockSizeUnit">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignmentUnit>Percent</models:WindowAlignmentUnit>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+                        <RadioButton x:Uid="Settings_Unit_Pixel"
+                        Command="{x:Bind ViewModel.ChangeClockSizeUnitCommand}"
+                        IsChecked="{x:Bind ViewModel.ClockSizeUnit, Converter={StaticResource WindowAlignmentUnitToBooleanConverter}, ConverterParameter=Pixel, Mode=OneWay}"
+                        FontSize="15"
+                        GroupName="ClockSizeUnit">
+                            <RadioButton.CommandParameter>
+                                <models:WindowAlignmentUnit>Pixel</models:WindowAlignmentUnit>
+                            </RadioButton.CommandParameter>
+                        </RadioButton>
+                    </StackPanel>
+
+                    <!-- Clock: Hour Height -->
+
+                    <TextBlock Grid.Row="7" Grid.Column="1"
+                               x:Uid="Settings_Clock_Hour_Height"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <NumberBox Grid.Row="7" Grid.Column="2"
+                               Margin="{StaticResource SettingsItemContentMargin}"
+                               Value="{x:Bind ViewModel.HourHeight, Mode=TwoWay}"
+                               Minimum="0"
+                               ValidationMode="InvalidInputOverwritten">
+                    </NumberBox>
+
+                    <!-- Clock: Minute Height -->
+
+                    <TextBlock Grid.Row="8" Grid.Column="1"
+                               x:Uid="Settings_Clock_Minute_Height"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <NumberBox Grid.Row="8" Grid.Column="2"
+                               Margin="{StaticResource SettingsItemContentMargin}"
+                               Value="{x:Bind ViewModel.MinuteHeight, Mode=TwoWay}"
+                               Minimum="0"
+                               ValidationMode="InvalidInputOverwritten">
+                    </NumberBox>
+
+                    <!-- Clock: Date Information Height -->
+
+                    <TextBlock Grid.Row="9" Grid.Column="1"
+                               x:Uid="Settings_Clock_Date_Height"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <NumberBox Grid.Row="9" Grid.Column="2"
+                               Margin="{StaticResource SettingsItemLastContentMargin}"
+                               Value="{x:Bind ViewModel.DateHeight, Mode=TwoWay}"
+                               Minimum="0"
+                               ValidationMode="InvalidInputOverwritten" />
+
+
+
+
+                    <!-- Calendar -->
+                    
+                    <Border Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="3" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                        <TextBlock x:Uid="Settings_Calendar" Style="{StaticResource SettingsCategoryStyle}" Margin="{StaticResource SettingsCategoryMargin}" />
+                    </Border>
+
+                    <Border Grid.Row="11" Grid.Column="0" Grid.RowSpan="2" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                        <Rectangle Width="20" VerticalAlignment="Stretch" />
+                    </Border>
+
+                    <!-- Calendar: Google Authentication -->
+
+                    <TextBlock Grid.Row="11" Grid.Column="1"
+                               x:Uid="Settings_Calendar_Google"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <StackPanel Grid.Row="11" Grid.Column="2"
+                                Margin="{StaticResource SettingsItemContentMargin}"
+                                Orientation="Horizontal">
+                        <TextBlock Text="{x:Bind ViewModel.AuthenticationStatus, Mode=OneWay, Converter={StaticResource BooleanToAuthenticationStatusConverter}}" VerticalAlignment="Center" />
+                        <Button Command="{x:Bind ViewModel.AuthenticateCommand}" x:Uid="Settings_Authenticate"/>
+                        <Button Command="{x:Bind ViewModel.UnauthenticateCommand}" x:Uid="Settings_Unauthenticate"/>
+                    </StackPanel>
+
+                    <!-- Calendar: Schedule Kind -->
+
+                    <TextBlock Grid.Row="12" Grid.Column="1"
+                               x:Uid="Settings_Calendar_Kind"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <ListView Grid.Row="12" Grid.Column="2"
+                              Margin="{StaticResource SettingsItemLastContentMargin}"
+                              x:Name="CalendarListView" ItemsSource="{x:Bind ViewModel.GoogleCalendarSettings}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:GoogleCalendarSetting">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" Width="150" VerticalAlignment="Center" />
+                                    <RadioButton
+                                    x:Uid="Settings_Calendar_Events"
+                                    IsChecked="{x:Bind DisplayType, Converter={StaticResource GoogleCalendarDisplayTypeToBooleanConverter}, ConverterParameter=Events, Mode=TwoWay}"
+                                    GroupName="{x:Bind Id}" />
+                                    <RadioButton 
+                                    x:Uid="Settings_Calendar_NonWorkingDay"
+                                    IsChecked="{x:Bind DisplayType, Converter={StaticResource GoogleCalendarDisplayTypeToBooleanConverter}, ConverterParameter=NonWorkingDay, Mode=TwoWay}"
+                                    GroupName="{x:Bind Id}" />
+                                    <RadioButton 
+                                    x:Uid="Settings_Calendar_Hidden"
+                                    IsChecked="{x:Bind DisplayType, Converter={StaticResource GoogleCalendarDisplayTypeToBooleanConverter}, ConverterParameter=Hidden, Mode=TwoWay}"
+                                    GroupName="{x:Bind Id}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+
+
+                    <!-- AutoStart -->
+                    
+                    <Border Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="3" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                        <TextBlock x:Uid="Settings_AutoStart"  Style="{StaticResource SettingsCategoryStyle}" Margin="{StaticResource SettingsCategoryMargin}" />
+                    </Border>
+
+                    <Border Grid.Row="14" Grid.Column="0" Grid.RowSpan="1" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                        <Rectangle Width="20" VerticalAlignment="Stretch" />
+                    </Border>
+
+                    <!-- AutoStart: AutoStart -->
+                    
+                    <TextBlock Grid.Row="14" Grid.Column="1"
+                               x:Uid="Settings_AutoStart"
+                               Style="{StaticResource SettingsItemStyle}"
+                               Margin="{StaticResource SettingsItemMargin}" />
+                    <StackPanel Grid.Row="14" Grid.Column="2"
+                                Margin="{StaticResource SettingsItemLastContentMargin}">
+                        <CheckBox x:Uid="Settings_AutoStart_Enable" IsChecked="{x:Bind ViewModel.AutoStart, Mode=TwoWay}" />
+                    </StackPanel>
+                </Grid>
+                
+                <TextBlock x:Uid="Settings_About" Style="{ThemeResource SubtitleTextBlockStyle}" />
+
+                <StackPanel Margin="{StaticResource XSmallTopMargin}">
+                        <TextBlock Text="{x:Bind ViewModel.VersionDescription, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" />
+
+                        <TextBlock
+                    x:Uid="Settings_AboutDescription"
+                    Margin="{StaticResource XSmallTopMargin}"
+                    Style="{ThemeResource BodyTextBlockStyle}" />
+                        <HyperlinkButton x:Uid="SettingsPage_PrivacyTermsLink" Margin="{StaticResource SettingsPageHyperlinkButtonMargin}" />
+                </StackPanel>
+            </StackPanel>
         </Grid>
-        
-    </Grid>
+    </ScrollViewer>
 </Page>

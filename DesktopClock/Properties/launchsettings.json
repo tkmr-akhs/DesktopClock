@@ -1,10 +1,13 @@
-﻿{
-    "profiles": {
-      "DesktopClock (Package)": {
-        "commandName": "MsixPackage"
-      },
-      "DesktopClock (Unpackaged)": {
-        "commandName": "Project"
-      }
+{
+  "profiles": {
+    "DesktopClock (Package)": {
+      "commandName": "MsixPackage",
+      "nativeDebugging": false,
+      "alwaysReinstallApp": false,
+      "hotReloadEnabled": true
+    },
+    "DesktopClock (Unpackaged)": {
+      "commandName": "Project"
     }
+  }
 }

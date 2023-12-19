@@ -1,13 +1,9 @@
-﻿using DesktopClock.Contracts.Services;
+﻿using Microsoft.Extensions.Options;
+using Windows.Storage;
 using DesktopClock.Core.Contracts.Services;
 using DesktopClock.Core.Helpers;
 using DesktopClock.Helpers;
 using DesktopClock.Models;
-
-using Microsoft.Extensions.Options;
-
-using Windows.ApplicationModel;
-using Windows.Storage;
 
 namespace DesktopClock.Services;
 
@@ -83,6 +79,22 @@ public class LocalSettingsService : ILocalSettingsService
             _settings[key] = await Json.StringifyAsync(value);
 
             await Task.Run(() => _fileService.Save(_applicationDataFolder, _localsettingsFile, _settings));
+        }
+    }
+
+    public async Task<bool> RemoveSettingAsync<T>(string key)
+    {
+        if (RuntimeHelper.IsMSIX)
+        {
+            return ApplicationData.Current.LocalSettings.Values.Remove(key);
+        }
+        else
+        {
+            var result = _settings.Remove(key);
+
+            await Task.Run(() => _fileService.Save(_applicationDataFolder, _localsettingsFile, _settings));
+
+            return result;
         }
     }
 }

@@ -1,7 +1,5 @@
-﻿using DesktopClock.Contracts.Services;
+﻿using Microsoft.UI.Xaml;
 using DesktopClock.ViewModels;
-
-using Microsoft.UI.Xaml;
 
 namespace DesktopClock.Activation;
 

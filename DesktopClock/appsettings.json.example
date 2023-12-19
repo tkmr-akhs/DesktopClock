@@ -1,0 +1,7 @@
+﻿{
+  "LocalSettingsOptions": {
+    "ClientId": "Your-Client-ID",
+    "ApplicationDataFolder": "DesktopClock/ApplicationData",
+    "LocalSettingsFile": "LocalSettings.json"
+  }
+}

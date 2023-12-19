@@ -1,10 +1,7 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-
-using DesktopClock.Contracts.Services;
+﻿using Microsoft.UI.Xaml.Controls;
+using CommunityToolkit.Mvvm.ComponentModel;
 using DesktopClock.ViewModels;
 using DesktopClock.Views;
-
-using Microsoft.UI.Xaml.Controls;
 
 namespace DesktopClock.Services;
 
@@ -15,12 +12,8 @@ public class PageService : IPageService
     public PageService()
     {
         Configure<MainViewModel, MainPage>();
-        Configure<Web表示ViewModel, Web表示Page>();
-        Configure<詳細を一覧表示ViewModel, 詳細を一覧表示Page>();
-        Configure<コンテンツグリッドViewModel, コンテンツグリッドPage>();
-        Configure<コンテンツグリッドDetailViewModel, コンテンツグリッドDetailPage>();
-        Configure<データグリッドViewModel, データグリッドPage>();
-        Configure<SettingsViewModel, SettingsPage>();
+        Configure<ClockViewModel, ClockPage>();
+        Configure<CalendarViewModel, CalendarPage>();
     }
 
     public Type GetPageType(string key)

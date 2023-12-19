@@ -11,15 +11,15 @@
   IgnorableNamespaces="uap rescap genTemplate">
 
   <Identity
-    Name="de39ae9e-c75e-46ca-80c9-16e5bb54a3f5"
+    Name="56e1a3af-0f9d-411c-afbf-30612557e366"
     Publisher="CN=kaosun"
     Version="1.0.0.0" />
     
-  <mp:PhoneIdentity PhoneProductId="de39ae9e-c75e-46ca-80c9-16e5bb54a3f5" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="56e1a3af-0f9d-411c-afbf-30612557e366" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
     
   <Properties>
-    <DisplayName>DesktopClock</DisplayName>
-    <PublisherDisplayName>kaosun</PublisherDisplayName>
+    <DisplayName>DesktopClock for Windows</DisplayName>
+    <PublisherDisplayName>TAKAMURA Akihisa</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -47,13 +47,13 @@
       </uap:VisualElements>
       <Extensions>
           <desktop:Extension Category="windows.toastNotificationActivation">
-              <desktop:ToastNotificationActivation ToastActivatorCLSID="a5c2bdf3-9ddf-45fa-a180-7083956ecc3b" />
+              <desktop:ToastNotificationActivation ToastActivatorCLSID="bf0fd138-1c79-47c4-8563-61a39c6d28ec" />
           </desktop:Extension>
 
           <com:Extension Category="windows.comServer">
               <com:ComServer>
                   <com:ExeServer Executable="DesktopClock.exe" Arguments="----AppNotificationActivated:" DisplayName="Toast activator">
-                      <com:Class Id="a5c2bdf3-9ddf-45fa-a180-7083956ecc3b" DisplayName="Toast activator"/>
+                      <com:Class Id="bf0fd138-1c79-47c4-8563-61a39c6d28ec" DisplayName="Toast activator"/>
                   </com:ExeServer>
               </com:ComServer>
           </com:Extension>
@@ -67,7 +67,7 @@
 
   <genTemplate:Metadata>
     <genTemplate:Item Name="generator" Value="Template Studio"/>
-    <genTemplate:Item Name="wizardVersion" Version="v5.5" />
+    <genTemplate:Item Name="wizardVersion" Version="v5.4" />
     <genTemplate:Item Name="projectType" Value="Blank" />
     <genTemplate:Item Name="framework" Value="MVVMToolkit" />
     <genTemplate:Item Name="platform" Value="WinUI" />

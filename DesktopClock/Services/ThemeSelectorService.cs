@@ -1,7 +1,5 @@
-﻿using DesktopClock.Contracts.Services;
+﻿using Microsoft.UI.Xaml;
 using DesktopClock.Helpers;
-
-using Microsoft.UI.Xaml;
 
 namespace DesktopClock.Services;
 

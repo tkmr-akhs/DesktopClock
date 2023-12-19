@@ -1,0 +1,111 @@
+﻿<Page
+    x:Class="DesktopClock.Views.ClockPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:helpers="using:DesktopClock.Helpers"
+    Background="Transparent"
+    PointerEntered="Page_PointerEntered"
+    AllowDrop="True"
+    DragEnter="Page_DragEnter"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <helpers:HourToImageConverter x:Key="HourToImageConverter" />
+        <helpers:MinuteToImageConverter x:Key="MinuteToImageConverter" />
+        <helpers:CalendarEntryToDateTextImageConverter x:Key="CalendarEntryToDateTextImageConverter" />
+        <helpers:TodayHolidayInformationToImageConverter x:Key="TodayHolidayInformationToImageConverter" />
+        <helpers:TodayScheduleInformationToImageConverter x:Key="TodayScheduleInformationToImageConverter" />
+        <helpers:FutureScheduleInformationToImageConverter x:Key="FutureScheduleInformationToImageConverter" />
+        <helpers:FutureHolidayInformationToImageConverter x:Key="FutureHolidayInformationToImageConverter" />
+        <helpers:DateInformationToVisibilityConverter x:Key="DateInformationToVisibilityConverter" />
+    </Page.Resources>
+
+    <!--Grid x:Name="ContentArea" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"-->
+    <Grid x:Name="ContentArea">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid Grid.Row="0" Grid.Column="1" x:Name="ActualContentArea" Background="Transparent" SizeChanged="ClockPage_SizeChanged" >
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Image Grid.Column="1" x:Name="HourTens" Source="{Binding HourTens, Converter={StaticResource HourToImageConverter}, Mode=OneWay}"/>
+                <Image Grid.Column="2" x:Name="HourOnes" Source="{Binding HourOnes, Converter={StaticResource HourToImageConverter}, Mode=OneWay}" />
+                <TextBlock Grid.Column="3" x:Name="HourMinuteSeparator" Text="-" FontSize="50px" Foreground="Transparent" />
+                <Image Grid.Column="4" x:Name="MinuteTens" Source="{Binding MinuteTens, Converter={StaticResource MinuteToImageConverter}, Mode=OneWay}" />
+                <Image Grid.Column="5" x:Name="MinuteOnes" Source="{Binding MinuteOnes, Converter={StaticResource MinuteToImageConverter}, Mode=OneWay}" />
+            </Grid>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Image Grid.Column="1" x:Name="Date" Source="{Binding TodayCalendarEntry, Converter={StaticResource CalendarEntryToDateTextImageConverter}, Mode=OneWay}"/>
+            </Grid>
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Image Grid.Column="1" x:Name="TodayHolidayInfo"
+                       Source="{Binding TodayHolidayInformation, Converter={StaticResource TodayHolidayInformationToImageConverter}, Mode=OneWay}"
+                       Visibility="{Binding TodayHolidayInformation, Converter={StaticResource DateInformationToVisibilityConverter}, Mode=OneWay}" />
+            </Grid>
+            <Grid Grid.Row="3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Image Grid.Column="1" x:Name="FutureHolidayInfo"
+                       Source="{Binding FutureHolidayInformation, Converter={StaticResource FutureHolidayInformationToImageConverter}, Mode=OneWay}"
+                       Visibility="{Binding FutureHolidayInformation, Converter={StaticResource DateInformationToVisibilityConverter}, Mode=OneWay}" />
+            </Grid>
+            <Grid Grid.Row="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Image Grid.Column="1" x:Name="TodayScheduleInfo"
+                       Source="{Binding TodayScheduleInformation, Converter={StaticResource TodayScheduleInformationToImageConverter}, Mode=OneWay}"
+                       Visibility="{Binding TodayScheduleInformation, Converter={StaticResource DateInformationToVisibilityConverter}, Mode=OneWay}" />
+            </Grid>
+            <Grid Grid.Row="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Image Grid.Column="1" x:Name="FutureScheduleInfo"
+                       Source="{Binding FutureScheduleInformation, Converter={StaticResource FutureScheduleInformationToImageConverter}, Mode=OneWay}"
+                       Visibility="{Binding FutureScheduleInformation, Converter={StaticResource DateInformationToVisibilityConverter}, Mode=OneWay}" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Page>

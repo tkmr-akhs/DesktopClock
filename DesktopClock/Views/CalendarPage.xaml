@@ -1,0 +1,187 @@
+﻿<Page
+    x:Class="DesktopClock.Views.CalendarPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:primitives="using:CommunityToolkit.WinUI.UI.Controls.Primitives"
+    xmlns:helpers="using:DesktopClock.Helpers"
+    Background="Transparent"
+    mc:Ignorable="d"
+    Loaded="Page_Loaded"
+    >
+
+    <Page.Resources>
+        <helpers:CalendarEntryToForegroundBrushConverter x:Key="CalendarEntryToForegroundColorConverter" />
+        <helpers:CalendarEntryToBackgroundBrushConverter x:Key="CalendarEntryToBackgroundColorConverter" />
+        <helpers:CalendarEntryToOpacityConverter x:Key="CalendarEntryToOpacityConverter" />
+        <helpers:CalendarEntryToDayOfMonthConverter x:Key="CalendarEntryToDayOfMonthConverter" />
+        <Style x:Key="BaseTextStyle" TargetType="TextBlock">
+            <Setter x:Name="BaseTextStyleFont" Property="FontSize" Value="14"/>
+        </Style>
+        <Style x:Key="CustomButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#01FFFFFF" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup>
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="Background" Value="#80FFFFFF" />
+                                            <Setter Target="BorderBrush" Value="{ThemeResource SystemAccentColor}" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <DataTemplate x:Key="DayColumnTemplate">
+            <Grid
+                Background="{Binding Converter={StaticResource CalendarEntryToBackgroundColorConverter}, Mode=OneWay}"
+                Opacity="{Binding Converter={StaticResource CalendarEntryToOpacityConverter}, Mode=OneWay}"
+                Margin="2" Padding="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Grid.Row="1" Grid.Column="1" 
+                    Text="{Binding Converter={StaticResource CalendarEntryToDayOfMonthConverter}, Mode=OneWay}"
+                    Foreground="{Binding Converter={StaticResource CalendarEntryToForegroundColorConverter}, Mode=OneWay}"
+                    Opacity="{Binding Converter={StaticResource CalendarEntryToOpacityConverter}, Mode=OneWay}"
+                    Style="{StaticResource BaseTextStyle}" />
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid x:Name="ContentArea">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Row="0" Grid.Column="1" x:Name="ActualContentArea" SizeChanged="CalendarPage_SizeChanged">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="BackButton" Grid.Column="0" Content="today&lt;&lt;" FontSize="10" Padding="1" Command="{x:Bind ViewModel.BackToThisMonthCommand}"/>
+                <Button x:Name="ReloadButton" Grid.Column="2" Content="reload" FontSize="10" Padding="1" Command="{x:Bind ViewModel.ReloadScheduleCommand}"/>
+            </Grid>
+
+            <StackPanel Grid.Row="1" Grid.Column="0"
+                        Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock x:Name="CalendarYear" Grid.Row="1" Grid.Column="1" Text="{Binding MonthlyCalendar.Year, Mode=OneWay}" Style="{StaticResource BaseTextStyle}" Padding="5,0,5,5" Margin="0,0,0,5" />
+                <TextBlock x:Name="CalendarMonth" Grid.Row="1" Grid.Column="1" Text="{Binding MonthlyCalendar.Month, Mode=OneWay}" Style="{StaticResource BaseTextStyle}" Padding="5,0,5,5" Margin="0,0,0,5" />
+            </StackPanel>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="PrevMonthButton" Grid.Row ="0" Grid.Column="0"  Content="&lt;" Padding="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Command="{x:Bind ViewModel.PreviousMonthCommand}"/>
+                <!-- Border Grid.Row="2" Grid.Column="1" BorderBrush="White" BorderThickness="1" >
+                <TextBlock x:Name="CalendarDataGrid" Text="CalendarDataGrid Test" />
+            </Border -->
+                <controls:DataGrid x:Name="CalendarDataGrid" Grid.Row="0" Grid.Column="1"
+                           ItemsSource="{Binding MonthlyCalendar}"
+                           AutoGenerateColumns="False"
+                           AllowDrop="False"
+                           Background="#00000000"
+                           HeadersVisibility="None"
+                           IsAccessKeyScope="False"
+                           IsFocusEngaged="False"
+                           IsHitTestVisible="False"
+                           IsHoldingEnabled="False"
+                           IsReadOnly="True"
+                           IsRightTapEnabled="False"
+                           IsTabStop="False"
+                           IsTapEnabled="False"
+                           >
+                    <controls:DataGrid.Columns>
+                        <controls:DataGridTemplateColumn Header="Sun">
+                            <controls:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding Sunday, Mode=OneWay}" ContentTemplate="{StaticResource DayColumnTemplate}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                                </DataTemplate>
+                            </controls:DataGridTemplateColumn.CellTemplate>
+                        </controls:DataGridTemplateColumn>
+                        <controls:DataGridTemplateColumn Header="Mon">
+                            <controls:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding Monday, Mode=OneWay}" ContentTemplate="{StaticResource DayColumnTemplate}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                                </DataTemplate>
+                            </controls:DataGridTemplateColumn.CellTemplate>
+                        </controls:DataGridTemplateColumn>
+                        <controls:DataGridTemplateColumn Header="Tue">
+                            <controls:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding Tuesday, Mode=OneWay}" ContentTemplate="{StaticResource DayColumnTemplate}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                                </DataTemplate>
+                            </controls:DataGridTemplateColumn.CellTemplate>
+                        </controls:DataGridTemplateColumn>
+                        <controls:DataGridTemplateColumn Header="Wed">
+                            <controls:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding Wednesday, Mode=OneWay}" ContentTemplate="{StaticResource DayColumnTemplate}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                                </DataTemplate>
+                            </controls:DataGridTemplateColumn.CellTemplate>
+                        </controls:DataGridTemplateColumn>
+                        <controls:DataGridTemplateColumn Header="Thu">
+                            <controls:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding Thursday, Mode=OneWay}" ContentTemplate="{StaticResource DayColumnTemplate}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                                </DataTemplate>
+                            </controls:DataGridTemplateColumn.CellTemplate>
+                        </controls:DataGridTemplateColumn>
+                        <controls:DataGridTemplateColumn Header="Fri">
+                            <controls:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding Friday, Mode=OneWay}" ContentTemplate="{StaticResource DayColumnTemplate}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                                </DataTemplate>
+                            </controls:DataGridTemplateColumn.CellTemplate>
+                        </controls:DataGridTemplateColumn>
+                        <controls:DataGridTemplateColumn Header="Sat">
+                            <controls:DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ContentControl Content="{Binding Saturday, Mode=OneWay}" ContentTemplate="{StaticResource DayColumnTemplate}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                                </DataTemplate>
+                            </controls:DataGridTemplateColumn.CellTemplate>
+                        </controls:DataGridTemplateColumn>
+                    </controls:DataGrid.Columns>
+                </controls:DataGrid>
+
+                <Button x:Name="NextMonthButton" Grid.Row="0" Grid.Column="2"  Content="&gt;" Padding="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Command="{x:Bind ViewModel.NextMonthCommand}"/>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</Page>

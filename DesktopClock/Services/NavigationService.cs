@@ -1,13 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-
-using CommunityToolkit.WinUI.UI.Animations;
-
-using DesktopClock.Contracts.Services;
-using DesktopClock.Contracts.ViewModels;
-using DesktopClock.Helpers;
-
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using DesktopClock.Contracts.ViewModels;
+using DesktopClock.Helpers;
 
 namespace DesktopClock.Services;
 
@@ -125,6 +120,4 @@ public class NavigationService : INavigationService
             Navigated?.Invoke(sender, e);
         }
     }
-
-    public void SetListDataItemForNextConnectedAnimation(object item) => Frame.SetListDataItemForNextConnectedAnimation(item);
 }

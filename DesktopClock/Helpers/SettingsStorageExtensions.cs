@@ -1,7 +1,6 @@
-﻿using DesktopClock.Core.Helpers;
-
-using Windows.Storage;
+﻿using Windows.Storage;
 using Windows.Storage.Streams;
+using DesktopClock.Core.Helpers;
 
 namespace DesktopClock.Helpers;
 
