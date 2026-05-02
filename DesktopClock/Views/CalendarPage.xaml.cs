@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.WinUI.UI.Controls;
 using Microsoft.UI.Xaml.Controls;
+using DesktopClock.Helpers;
 using DesktopClock.ViewModels;
 using Windows.Graphics;
 
@@ -34,11 +35,6 @@ public sealed partial class CalendarPage : Page
         return new Windows.Foundation.Size(ActualContentArea.ActualWidth, ActualContentArea.ActualHeight);
     }
 
-    public Windows.Foundation.Size GetRenderSize()
-    {
-        return ActualContentArea.RenderSize;
-    }
-
     private void Page_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         var calendarWindow = _windowRepositoryService.GetWindowOfPage<CalendarPage>();
@@ -61,7 +57,7 @@ public sealed partial class CalendarPage : Page
     {
         var thisWindow = _windowRepositoryService.GetWindowOfPage<CalendarPage>();
 
-        var columnWidth = thisWindow.Width / 8;
+        var columnWidth = WindowSizeHelper.GetClientSize(thisWindow).Width / 8;
 
         PrevMonthButton.Width = columnWidth / 2;
         NextMonthButton.Width = columnWidth / 2;

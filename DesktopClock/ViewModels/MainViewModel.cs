@@ -262,11 +262,14 @@ public partial class MainViewModel : ObservableRecipient
             else
             {
                 await _loggingService.WriteLogAsync(nameof(GoogleCalendarService), nameof(MainViewModel), "User credential is null.", severity: LogSeverity.Warning);
+                await _googlePkceService.SetAuthenticationRequiredAsync(false, CancellationToken.None);
+                AuthenticationStatus = false;
             }
         }
         catch (Exception exp)
         {
             await _loggingService.WriteLogAsync(nameof(MainViewModel), nameof(AuthenticateAsync), exception: exp);
+            await _googlePkceService.SetAuthenticationRequiredAsync(false, CancellationToken.None);
             AuthenticationStatus = false;
         }
     }

@@ -13,11 +13,10 @@ internal class BooleanToAuthenticationStatusConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, string language)
     {
         var resultMessage = unknownStatus;
-        var resourceLoader = Windows.ApplicationModel.Resources.ResourceLoader.GetForViewIndependentUse();
 
         if (value is bool isAuthorized) {
-            if (isAuthorized) resultMessage = resourceLoader.GetString("Authenticated");
-            else resultMessage = resourceLoader.GetString("Unauthenticated");
+            if (isAuthorized) resultMessage = "Authenticated".GetLocalized();
+            else resultMessage = "Unauthenticated".GetLocalized();
         }
         return resultMessage;
     }

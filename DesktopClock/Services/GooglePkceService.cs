@@ -1,12 +1,11 @@
 ﻿using Microsoft.Extensions.Options;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
+using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Util;
 using DesktopClock.Models;
 using DesktopClock.Contracts.Services;
-using DesktopClock.ViewModels;
-using System.Diagnostics;
 
 namespace DesktopClock.Services;
 
@@ -49,43 +48,70 @@ public class GooglePkceService : IGooglePkceService
         await Task.CompletedTask;
     }
 
-    public async Task<UserCredential> AuthenticateAsync(CancellationToken cancellationToken)
+    public async Task<UserCredential?> GetSavedCredentialAsync(CancellationToken cancellationToken)
     {
-        await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(AuthenticateAsync), "Authentication is invoked.");
-
         if (!IsAuthenticationRequired) return default;
 
         var token = await _flow.LoadTokenAsync("user", cancellationToken);
 
         if (token == null)
         {
-            await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(AuthenticateAsync), "The token was not saved in the DataStore.");
+            await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(GetSavedCredentialAsync), "The token was not saved in the DataStore.");
         }
         else
         {
-            await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(AuthenticateAsync), "A token was stored in the DataStore.");
+            await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(GetSavedCredentialAsync), "A token was stored in the DataStore.");
 
             // TokenResponseからUserCredentialを作成します。
             var credential = new UserCredential(_flow, "user", token);
 
             if (!credential.Token.IsExpired(SystemClock.Default))
             {
-                await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(AuthenticateAsync), "The token has not expired.");
+                await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(GetSavedCredentialAsync), "The token has not expired.");
                 return credential;
             }
 
-            await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(AuthenticateAsync), "The token has expired.");
+            await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(GetSavedCredentialAsync), "The token has expired.");
 
-            if (await credential.RefreshTokenAsync(cancellationToken))
+            var refreshed = false;
+            var refreshFailureLogged = false;
+            try
             {
-                await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(AuthenticateAsync), "The token has been refreshed.");
+                refreshed = await credential.RefreshTokenAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception exp)
+            {
+                await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(GetSavedCredentialAsync), "The token refresh failed.", LogSeverity.Warning, exp);
+                refreshFailureLogged = true;
+            }
+
+            if (refreshed)
+            {
+                await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(GetSavedCredentialAsync), "The token has been refreshed.");
                 return credential;
             }
-            else
+
+            if (!refreshFailureLogged)
             {
-                await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(AuthenticateAsync), "The token refresh failed.");
+                await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(GetSavedCredentialAsync), "The token refresh failed.", severity: LogSeverity.Warning);
             }
         }
+
+        return default;
+    }
+
+    public async Task<UserCredential?> AuthenticateAsync(CancellationToken cancellationToken)
+    {
+        await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(AuthenticateAsync), "Authentication is invoked.");
+
+        var credential = await GetSavedCredentialAsync(cancellationToken);
+        if (credential != default) return credential;
+
+        if (!IsAuthenticationRequired) return default;
 
         await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(AuthenticateAsync), "A new authentication process will be initiated.");
         var codeReceiver = new LocalServerCodeReceiver();
@@ -127,9 +153,20 @@ public class GooglePkceService : IGooglePkceService
 
         if (token != null)
         {
-            //await _localSettingsDataStoreService.ClearAsync();
-            await _flow.RevokeTokenAsync("user", token.AccessToken, cancellationToken);
+            try
+            {
+                if (!String.IsNullOrEmpty(token.AccessToken))
+                {
+                    await _flow.RevokeTokenAsync("user", token.AccessToken, cancellationToken);
+                }
+            }
+            catch (Exception exp)
+            {
+                await _loggingService.WriteLogAsync(nameof(GooglePkceService), nameof(ClearAuthenticationAsync), "Failed to revoke the Google token.", LogSeverity.Warning, exp);
+            }
         }
+
+        await _localSettingsDataStoreService.DeleteAsync<TokenResponse>("user");
     }
 
     public delegate void AuthenticationRequiredChangedEventHandler(object sender, AuthenticationRequiredChangedEventArgs e);

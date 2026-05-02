@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using DesktopClock.Core.Contracts.Services;
 using DesktopClock.Core.Models;
+using DesktopClock.Helpers;
 using DesktopClock.Models;
 
 namespace DesktopClock.ViewModels;
@@ -72,15 +73,14 @@ public partial class ClockViewModel : ObservableRecipient
         _dateTimeProviderService.PropertyChanged += _dateTimeProviderService_PropertyChanged;
         _monthlyCalendarService.ScheduleApplied += _monthlyCalendarService_ScheduleApplied;
 
-        var resourceLoader = Windows.ApplicationModel.Resources.ResourceLoader.GetForViewIndependentUse();
-        _nDayHolidayFormat = resourceLoader.GetString("ClockPage_NDayHolidayFormat");
-        _futureHolidayFormat = resourceLoader.GetString("ClockPage_FutureHolidayFormat");
-        _plansFormat = resourceLoader.GetString("ClockPage_PlansFormat");
-        _nameToday = resourceLoader.GetString("Today");
-        _nameTomorrow = resourceLoader.GetString("Tomorrow");
-        _nameTheDayAfterTomorrow = resourceLoader.GetString("TheDayAfterTomorrow");
-        _planned = resourceLoader.GetString("Planned");
-        _plans = resourceLoader.GetString("Plans");
+        _nDayHolidayFormat = "ClockPage_NDayHolidayFormat".GetLocalized();
+        _futureHolidayFormat = "ClockPage_FutureHolidayFormat".GetLocalized();
+        _plansFormat = "ClockPage_PlansFormat".GetLocalized();
+        _nameToday = "Today".GetLocalized();
+        _nameTomorrow = "Tomorrow".GetLocalized();
+        _nameTheDayAfterTomorrow = "TheDayAfterTomorrow".GetLocalized();
+        _planned = "Planned".GetLocalized();
+        _plans = "Plans".GetLocalized();
 
         SetTimeProperties();
         TodayCalendarEntry = _monthlyCalendarService.MonthlyCalendar.GetEntry(DateOnly.FromDateTime(_dateTimeProviderService.Today));

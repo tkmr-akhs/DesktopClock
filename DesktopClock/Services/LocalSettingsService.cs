@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
+using System.Text.Json;
 using Windows.Storage;
 using DesktopClock.Core.Contracts.Services;
 using DesktopClock.Core.Helpers;
@@ -38,7 +39,8 @@ public class LocalSettingsService : ILocalSettingsService
     {
         if (!_isInitialized)
         {
-            _settings = await Task.Run(() => _fileService.Read<IDictionary<string, object>>(_applicationDataFolder, _localsettingsFile)) ?? new Dictionary<string, object>();
+            var settings = await Task.Run(() => _fileService.Read<IDictionary<string, object>>(_applicationDataFolder, _localsettingsFile)) ?? new Dictionary<string, object>();
+            _settings = NormalizeSettings(settings);
 
             _isInitialized = true;
         }
@@ -50,7 +52,7 @@ public class LocalSettingsService : ILocalSettingsService
         {
             if (ApplicationData.Current.LocalSettings.Values.TryGetValue(key, out var obj))
             {
-                return await Json.ToObjectAsync<T>((string)obj);
+                return await Json.ToObjectAsync<T>(ToSettingJson(obj));
             }
         }
         else
@@ -59,7 +61,7 @@ public class LocalSettingsService : ILocalSettingsService
 
             if (_settings != null && _settings.TryGetValue(key, out var obj))
             {
-                return await Json.ToObjectAsync<T>((string)obj);
+                return await Json.ToObjectAsync<T>(ToSettingJson(obj));
             }
         }
 
@@ -90,11 +92,47 @@ public class LocalSettingsService : ILocalSettingsService
         }
         else
         {
+            await InitializeAsync();
+
             var result = _settings.Remove(key);
 
             await Task.Run(() => _fileService.Save(_applicationDataFolder, _localsettingsFile, _settings));
 
             return result;
         }
+    }
+
+    private static IDictionary<string, object> NormalizeSettings(IDictionary<string, object> settings)
+    {
+        var normalized = new Dictionary<string, object>();
+
+        foreach (var setting in settings)
+        {
+            normalized[setting.Key] = ToSettingJson(setting.Value);
+        }
+
+        return normalized;
+    }
+
+    private static string ToSettingJson(object? settingValue)
+    {
+        if (settingValue == null)
+        {
+            return "null";
+        }
+
+        if (settingValue is string json)
+        {
+            return json;
+        }
+
+        if (settingValue is JsonElement jsonElement)
+        {
+            return jsonElement.ValueKind == JsonValueKind.String
+                ? jsonElement.GetString() ?? "null"
+                : jsonElement.GetRawText();
+        }
+
+        return JsonSerializer.Serialize(settingValue);
     }
 }

@@ -14,7 +14,7 @@ public class MonthlyCalendarService : IMonthlyCalendarService
 
     public HolidayDurationCalculator HolidayDurationCalculator { get; }
 
-    private CancellationTokenSource googleCalendarCancellationTokenSource;
+    private CancellationTokenSource? googleCalendarCancellationTokenSource;
 
     public MonthlyCalendarService(ILoggingService loggingService, IGoogleCalendarService googleCalendarService)
     {
@@ -47,8 +47,19 @@ public class MonthlyCalendarService : IMonthlyCalendarService
     {
         if (googleCalendarCancellationTokenSource != null && !googleCalendarCancellationTokenSource.IsCancellationRequested) googleCalendarCancellationTokenSource.Cancel();
         googleCalendarCancellationTokenSource = new();
-        await _googleCalendarService.ApplyScheduleToMonthlyCalendar(MonthlyCalendar,  googleCalendarCancellationTokenSource.Token);
-        OnScheduleApplied();
+        var cancellationTokenSource = googleCalendarCancellationTokenSource;
+        try
+        {
+            await _googleCalendarService.ApplyScheduleToMonthlyCalendar(MonthlyCalendar, cancellationTokenSource.Token);
+            OnScheduleApplied();
+        }
+        catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
+        {
+        }
+        catch (Exception exp)
+        {
+            await _loggingService.WriteLogAsync(nameof(MonthlyCalendarService), nameof(ApplyScheduleAsync), "Failed to apply Google Calendar schedules.", LogSeverity.Warning, exp);
+        }
     }
 
     private void OnScheduleApplied()

@@ -48,9 +48,8 @@ internal class TodayHolidayInformationToImageConverter : DateInformationToImageC
 {
     internal TodayHolidayInformationToImageConverter() : base()
     {
-        var resourceLoader = Windows.ApplicationModel.Resources.ResourceLoader.GetForViewIndependentUse();
-        Prefix = resourceLoader.GetString("ClockPage_TodayInfoPrefix");
-        Suffix = resourceLoader.GetString("ClockPage_TodayInfoSuffix");
+        Prefix = "ClockPage_TodayInfoPrefix".GetLocalized();
+        Suffix = "ClockPage_TodayInfoSuffix".GetLocalized();
         AsNonWorkingDay = true;
     }
 }
@@ -59,9 +58,8 @@ internal class TodayScheduleInformationToImageConverter : DateInformationToImage
 {
     internal TodayScheduleInformationToImageConverter() : base()
     {
-        var resourceLoader = Windows.ApplicationModel.Resources.ResourceLoader.GetForViewIndependentUse();
-        Prefix = resourceLoader.GetString("ClockPage_TodayInfoPrefix");
-        Suffix = resourceLoader.GetString("ClockPage_TodayInfoSuffix");
+        Prefix = "ClockPage_TodayInfoPrefix".GetLocalized();
+        Suffix = "ClockPage_TodayInfoSuffix".GetLocalized();
         AsScheduledDay = true;
     }
 }

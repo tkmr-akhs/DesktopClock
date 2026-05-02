@@ -32,7 +32,7 @@ public partial class CalendarViewModel : ObservableRecipient
 
         var today = DateTime.Today;
         MonthlyCalendar = _monthlyCalendarService.MonthlyCalendar;
-        _monthlyCalendarService.ApplyScheduleAsync();
+        _ = _monthlyCalendarService.ApplyScheduleAsync();
 
         NextMonthCommand = new RelayCommand(
             async () =>

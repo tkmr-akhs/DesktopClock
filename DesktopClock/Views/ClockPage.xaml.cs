@@ -29,11 +29,6 @@ public sealed partial class ClockPage : Page
         return new Windows.Foundation.Size(ActualContentArea.ActualWidth, ActualContentArea.ActualHeight);
     }
 
-    public Windows.Foundation.Size GetRenderSize()
-    {
-        return ActualContentArea.RenderSize;
-    }
-
     public double GetClockWidth()
     {
         return HourTens.ActualWidth + HourOnes.ActualWidth + HourMinuteSeparator.ActualWidth + MinuteTens.ActualWidth + MinuteOnes.ActualWidth;
@@ -67,8 +62,8 @@ public sealed partial class ClockPage : Page
         {
             Left = clockWindow.AppWindow.Position.X,
             Top = clockWindow.AppWindow.Position.Y,
-            Width = clockWindow.Width,
-            Height = clockWindow.Height
+            Width = clockWindow.AppWindow.Size.Width,
+            Height = clockWindow.AppWindow.Size.Height
         };
 
         var task = new Task<Visibility>((x) =>

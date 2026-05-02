@@ -11,9 +11,7 @@ internal class CalendarEntryToDateTextImageConverter : IValueConverter
 
     internal CalendarEntryToDateTextImageConverter()
     {
-        var resourceLoader = Windows.ApplicationModel.Resources.ResourceLoader.GetForViewIndependentUse();
-
-        _dateFormat = resourceLoader.GetString("DateFormat");
+        _dateFormat = "DateFormat".GetLocalized();
         _dateStyleSelectorService = App.GetService<IDateStyleSelectorService>();
     }
 

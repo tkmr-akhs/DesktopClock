@@ -1,0 +1,8 @@
+﻿<Solution>
+  <Project Path="DesktopClock.Core/DesktopClock.Core.csproj" />
+  <Project Path="DesktopClock.Tests.xUnit/DesktopClock.Tests.xUnit.csproj" />
+  <Project Path="DesktopClock/DesktopClock.csproj">
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="WinFormsWrapper/WinFormsWrapper.csproj" />
+</Solution>

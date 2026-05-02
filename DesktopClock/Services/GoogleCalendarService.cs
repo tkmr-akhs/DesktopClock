@@ -17,7 +17,7 @@ public class GoogleCalendarService : IGoogleCalendarService
     private readonly ILoggingService _loggingService;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IGooglePkceService _googlePkceService;
-    private CalendarService _calendarService;
+    private CalendarService? _calendarService;
     private readonly ObservableDictionary<string, GoogleCalendarSetting> _calendarSettingsDictionary;
 
     public GoogleCalendarService(ILoggingService loggingService, ILocalSettingsService localSettingsService, IGooglePkceService googlePkceService)
@@ -50,11 +50,11 @@ public class GoogleCalendarService : IGoogleCalendarService
         }
     }
 
-    private async Task InitializeGoogleCalendarServiceAsync()
+    private async Task InitializeGoogleCalendarServiceAsync(CancellationToken cancellationToken)
     {
         if (_calendarService != default) return;
 
-        var credential = await _googlePkceService.AuthenticateAsync(CancellationToken.None);
+        var credential = await _googlePkceService.GetSavedCredentialAsync(cancellationToken);
 
         if (credential != default)
         {
@@ -63,13 +63,13 @@ public class GoogleCalendarService : IGoogleCalendarService
                 HttpClientInitializer = credential,
                 ApplicationName = ApplicationName,
             });
-            await SyncGoogleCalendarsAsync(_calendarService);
+            await SyncGoogleCalendarsAsync(_calendarService, cancellationToken);
         }
     }
 
-    private async Task SyncGoogleCalendarsAsync(CalendarService calendarService)
+    private async Task SyncGoogleCalendarsAsync(CalendarService calendarService, CancellationToken cancellationToken)
     {
-        var calendarList = await calendarService.CalendarList.List().ExecuteAsync();
+        var calendarList = await calendarService.CalendarList.List().ExecuteAsync(cancellationToken);
 
         foreach (CalendarListEntry entry in calendarList.Items)
         {
@@ -102,60 +102,69 @@ public class GoogleCalendarService : IGoogleCalendarService
 
     public async Task ApplyScheduleToMonthlyCalendar(MonthlyCalendar monthlyCalendar, CancellationToken cancellationToken)
     {
-        await InitializeGoogleCalendarServiceAsync();
-
-        if (_calendarService == default) return;
-
-        var complete = false;
-        while (!complete && !cancellationToken.IsCancellationRequested)
+        try
         {
-            monthlyCalendar.Clear();
-            foreach (var keyValuePair in _calendarSettingsDictionary)
+            await InitializeGoogleCalendarServiceAsync(cancellationToken);
+
+            if (_calendarService == default) return;
+
+            var complete = false;
+            while (!complete && !cancellationToken.IsCancellationRequested)
             {
-                var displayType = keyValuePair.Value.DisplayType;
-
-                if (displayType == GoogleCalendarDisplayType.Hidden) continue;
-
-                var request = _calendarService.Events.List(keyValuePair.Key);
-                request.TimeMin = monthlyCalendar.MinDate.ToDateTime(TimeOnly.MinValue);
-                request.TimeMax = monthlyCalendar.MaxDate.AddDays(-1).ToDateTime(TimeOnly.MaxValue);
-
-                var events = await request.ExecuteAsync();
-
-                try
+                monthlyCalendar.Clear();
+                complete = true;
+                foreach (var keyValuePair in _calendarSettingsDictionary)
                 {
-                    foreach (var eventItem in events.Items)
+                    var displayType = keyValuePair.Value.DisplayType;
+
+                    if (displayType == GoogleCalendarDisplayType.Hidden) continue;
+
+                    var request = _calendarService.Events.List(keyValuePair.Key);
+                    request.TimeMin = monthlyCalendar.MinDate.ToDateTime(TimeOnly.MinValue);
+                    request.TimeMax = monthlyCalendar.MaxDate.AddDays(-1).ToDateTime(TimeOnly.MaxValue);
+
+                    var events = await request.ExecuteAsync(cancellationToken);
+
+                    try
                     {
-                        var eventRange = ToDateOnlyRange(eventItem.Start, eventItem.End, monthlyCalendar.MinDate, monthlyCalendar.MaxDate.AddDays(1));
-                        if (displayType == GoogleCalendarDisplayType.Events)
+                        foreach (var eventItem in events.Items)
                         {
-                            foreach (var day in eventRange.GetAllDatesInRange())
+                            var eventRange = ToDateOnlyRange(eventItem.Start, eventItem.End, monthlyCalendar.MinDate, monthlyCalendar.MaxDate.AddDays(1));
+                            if (displayType == GoogleCalendarDisplayType.Events)
                             {
-                                monthlyCalendar.MarkEntry(day, isScheduledDay: true);
+                                foreach (var day in eventRange.GetAllDatesInRange())
+                                {
+                                    monthlyCalendar.MarkEntry(day, isScheduledDay: true);
+                                }
                             }
-                        }
-                        else if (displayType == GoogleCalendarDisplayType.NonWorkingDay)
-                        {
-                            foreach (var day in eventRange.GetAllDatesInRange())
+                            else if (displayType == GoogleCalendarDisplayType.NonWorkingDay)
                             {
-                                monthlyCalendar.MarkEntry(day, isNonWorkingDay: true);
-                                monthlyCalendar.AddEntryInformation(day, eventItem.Summary);
+                                foreach (var day in eventRange.GetAllDatesInRange())
+                                {
+                                    monthlyCalendar.MarkEntry(day, isNonWorkingDay: true);
+                                    monthlyCalendar.AddEntryInformation(day, eventItem.Summary);
+                                }
                             }
                         }
                     }
-                    complete = true;
-                }
-                catch (ArgumentException exp)
-                {
-                    if (cancellationToken.IsCancellationRequested) return;
-                    else
+                    catch (ArgumentException exp)
                     {
-                        await _loggingService.WriteLogAsync(nameof(GoogleCalendarService), nameof(ApplyScheduleToMonthlyCalendar), exception: exp);
-                        throw;
+                        if (cancellationToken.IsCancellationRequested) return;
+                        else
+                        {
+                            await _loggingService.WriteLogAsync(nameof(GoogleCalendarService), nameof(ApplyScheduleToMonthlyCalendar), exception: exp);
+                            throw;
+                        }
                     }
                 }
             }
-
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exp)
+        {
+            await _loggingService.WriteLogAsync(nameof(GoogleCalendarService), nameof(ApplyScheduleToMonthlyCalendar), "Google Calendar synchronization failed.", LogSeverity.Warning, exp);
         }
     }
 
@@ -175,7 +184,7 @@ public class GoogleCalendarService : IGoogleCalendarService
             // 時間指定イベント
             startDateOnly = DateOnly.FromDateTime(DateTime.Parse(start.DateTimeRaw));
 
-            var finishDateTime = DateTime.Parse(start.DateTimeRaw);
+            var finishDateTime = DateTime.Parse(finish.DateTimeRaw);
             var finishTimeOnly = TimeOnly.FromDateTime(finishDateTime);
             finishDateOnly = DateOnly.FromDateTime(finishDateTime);
 
@@ -197,7 +206,7 @@ public class GoogleCalendarService : IGoogleCalendarService
 
     private void FlushOldGoogleCalendarSettings(CalendarList calendarList)
     {
-        foreach (var setting in _calendarSettingsDictionary)
+        foreach (var setting in _calendarSettingsDictionary.ToArray())
         {
             var found = false;
             foreach (var calendar in calendarList.Items)

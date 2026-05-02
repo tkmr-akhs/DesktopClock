@@ -1,4 +1,5 @@
 ﻿using Windows.Graphics;
+using DesktopClock.Helpers;
 using DesktopClock.Models;
 using DesktopClock.Views;
 
@@ -67,25 +68,8 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
         var clockWidth = clockPage.GetClockWidth();
         var calendarPageSize = calendarPage.GetActualSize();
 
-        if (clockWindow.Width != clockPageSize.Width)
-        {
-            clockWindow.Width = clockPageSize.Width;
-        }
-
-        if (clockWindow.Height != clockPageSize.Height)
-        {
-            clockWindow.Height = clockPageSize.Height;
-        }
-
-        if (calendarWindow.Width != clockWidth)
-        {
-            calendarWindow.Width = clockWidth;
-        }
-
-        if (calendarWindow.Height != calendarPageSize.Height)
-        {
-            calendarWindow.Height = calendarPageSize.Height;
-        }
+        WindowSizeHelper.ResizeClientArea(clockWindow, clockPageSize);
+        WindowSizeHelper.ResizeClientArea(calendarWindow, new Windows.Foundation.Size(clockWidth, calendarPageSize.Height));
 
         clockWindow.Show();
         calendarWindow.Show();
@@ -136,11 +120,11 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
         }
         else if (AlignmentSetting.IsHorizontalCenter)
         {
-            resultX = (int)Math.Round(screenBounds.X + (screenBounds.Width - clockWindow.Width) / 2);
+            resultX = (int)Math.Round(screenBounds.X + (screenBounds.Width - clockWindow.AppWindow.Size.Width) / 2.0);
         }
         else
         {
-            resultX = (int)Math.Round(screenBounds.X + screenBounds.Width - marginX - clockWindow.Width);
+            resultX = screenBounds.X + screenBounds.Width - marginX - clockWindow.AppWindow.Size.Width;
         }
 
 
@@ -151,11 +135,11 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
         }
         else if (AlignmentSetting.IsVerticalCenter)
         {
-            resultY = (int)Math.Round(screenBounds.Y + (screenBounds.Height - clockWindow.Height) / 2);
+            resultY = (int)Math.Round(screenBounds.Y + (screenBounds.Height - clockWindow.AppWindow.Size.Height) / 2.0);
         }
         else
         {
-            resultY = (int)Math.Round(screenBounds.Y + screenBounds.Height - marginY - clockWindow.Height);
+            resultY = screenBounds.Y + screenBounds.Height - marginY - clockWindow.AppWindow.Size.Height;
         }
 
         return new PointInt32(resultX, resultY);
@@ -172,12 +156,12 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
         int calendarWindowY;
         if (AlignmentSetting.IsBottom)
         {
-            calendarWindowY = clockWindowPosition.Y - (int)calendarWindow.Height - DefaultBetweenWindowsMargin;
+            calendarWindowY = clockWindowPosition.Y - calendarWindow.AppWindow.Size.Height - DefaultBetweenWindowsMargin;
         }
         else
         {
 
-            calendarWindowY = clockWindowPosition.Y + (int)clockWindow.Height + DefaultBetweenWindowsMargin;
+            calendarWindowY = clockWindowPosition.Y + clockWindow.AppWindow.Size.Height + DefaultBetweenWindowsMargin;
         }
 
         return new PointInt32(calenarWindowX, calendarWindowY);
