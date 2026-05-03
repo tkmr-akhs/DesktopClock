@@ -86,12 +86,13 @@ public sealed partial class MainWindow : WindowEx
         clockWindow.IsResizable = false;
         clockWindow.IsMaximizable = false;
         clockWindow.IsMinimizable = false;
-        clockWindow.IsTitleBarVisible = false;
         clockWindow.IsShownInSwitchers = false;
         clockWindow.IsAlwaysOnTop = true;
         TryApplyTransparentBackdrop(clockWindow);
         clockWindow.AppWindow.TitleBar.BackgroundColor = transparentColor;
         clockWindow.AppWindow.TitleBar.InactiveBackgroundColor = transparentColor;
+        TryHideSystemFrame(clockWindow, removeStandardWindowFrame: true, suppressWindowShadow: true);
+        clockWindow.SizeChanged += ClockWindow_SizeChanged;
 
         clockWindow.Hide();
     }
@@ -132,6 +133,14 @@ public sealed partial class MainWindow : WindowEx
     private void CalendarWindow_ZOrderChanged(object? sender, ZOrderInfo e)
     {
         ((WindowEx)sender).AppWindow.MoveInZOrderAtBottom();
+    }
+
+    private static void ClockWindow_SizeChanged(object sender, WindowSizeChangedEventArgs args)
+    {
+        if (sender is WindowEx clockWindow)
+        {
+            TrySuppressWindowShadow(clockWindow);
+        }
     }
 
     private void SettingsMenuItem_Click(object? sender, EventArgs e)
@@ -183,11 +192,135 @@ public sealed partial class MainWindow : WindowEx
 
     private static void ApplyTransparentBackdrop(WindowEx window)
     {
-        EnableBlurBehind(window);
         window.SystemBackdrop = new TransparentBackdrop();
+        EnableTransparentWindow(window);
     }
 
-    private static void EnableBlurBehind(WindowEx window)
+    private static void EnableTransparentWindow(WindowEx window)
+    {
+        var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        if (windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var backdropType = DwmSystemBackdropTypeNone;
+        _ = DwmSetWindowAttribute(windowHandle, DwmWindowAttributeSystemBackdropType, ref backdropType, sizeof(int));
+
+        if (!TryEnableRedirectionBitmapAlpha(windowHandle))
+        {
+            EnableBlurBehind(windowHandle);
+        }
+    }
+
+    private static bool TryEnableRedirectionBitmapAlpha(IntPtr windowHandle)
+    {
+        var enableAlpha = NativeBooleanTrue;
+        return DwmSetWindowAttribute(windowHandle, DwmWindowAttributeRedirectionBitmapAlpha, ref enableAlpha, sizeof(int)) >= 0;
+    }
+
+    private static void TryHideSystemFrame(WindowEx window, bool removeStandardWindowFrame, bool suppressWindowShadow)
+    {
+        try
+        {
+            HideSystemFrame(window, removeStandardWindowFrame, suppressWindowShadow);
+        }
+        catch (Exception exp)
+        {
+            App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TryHideSystemFrame), "System frame customization is not available.", LogSeverity.Warning, exp);
+        }
+    }
+
+    private static void HideSystemFrame(WindowEx window, bool removeStandardWindowFrame, bool suppressWindowShadow)
+    {
+        var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window);
+        if (window.AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.SetBorderAndTitleBar(false, false);
+        }
+
+        if (removeStandardWindowFrame)
+        {
+            RemoveStandardWindowFrame(windowHandle);
+        }
+
+        if (suppressWindowShadow)
+        {
+            SuppressWindowShadow(windowHandle);
+        }
+
+        SuppressAccentColorWindowBorder(windowHandle);
+    }
+
+    private static void TrySuppressWindowShadow(WindowEx window)
+    {
+        try
+        {
+            SuppressWindowShadow(WinRT.Interop.WindowNative.GetWindowHandle(window));
+        }
+        catch (Exception exp)
+        {
+            App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TrySuppressWindowShadow), "Window shadow customization is not available.", LogSeverity.Warning, exp);
+        }
+    }
+
+    private static void RemoveStandardWindowFrame(IntPtr windowHandle)
+    {
+        if (windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var style = GetWindowLongPtr(windowHandle, WindowLongIndexStyle);
+        var newStyle = new IntPtr(style.ToInt64() & ~NativeWindowFrameStyles);
+        _ = SetWindowLongPtr(windowHandle, WindowLongIndexStyle, newStyle);
+        _ = SetWindowPos(windowHandle, IntPtr.Zero, 0, 0, 0, 0, SetWindowPositionFrameChangedFlags);
+    }
+
+    private static void SuppressAccentColorWindowBorder(IntPtr windowHandle)
+    {
+        var borderColor = DwmColorNone;
+        _ = DwmSetWindowAttribute(windowHandle, DwmWindowAttributeBorderColor, ref borderColor, sizeof(uint));
+    }
+
+    private static void SuppressWindowShadow(IntPtr windowHandle)
+    {
+        if (windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var renderingPolicy = DwmNonClientRenderingPolicyDisabled;
+        var cornerPreference = DwmWindowCornerPreferenceDoNotRound;
+        _ = DwmSetWindowAttribute(windowHandle, DwmWindowAttributeNonClientRenderingPolicy, ref renderingPolicy, sizeof(int));
+        _ = DwmSetWindowAttribute(windowHandle, DwmWindowAttributeWindowCornerPreference, ref cornerPreference, sizeof(int));
+        _ = TryEnableRedirectionBitmapAlpha(windowHandle);
+        RemoveShadowExtendedWindowStyles(windowHandle);
+        _ = SetWindowPos(windowHandle, IntPtr.Zero, 0, 0, 0, 0, SetWindowPositionFrameChangedFlags);
+    }
+
+    private static void RemoveShadowExtendedWindowStyles(IntPtr windowHandle)
+    {
+        var extendedStyle = GetWindowLongPtr(windowHandle, WindowLongIndexExtendedStyle);
+        var newExtendedStyle = new IntPtr(extendedStyle.ToInt64() & ~NativeWindowShadowExtendedStyles);
+        _ = SetWindowLongPtr(windowHandle, WindowLongIndexExtendedStyle, newExtendedStyle);
+    }
+
+    private static IntPtr GetWindowLongPtr(IntPtr windowHandle, int index)
+    {
+        return IntPtr.Size == 8
+            ? GetWindowLongPtr64(windowHandle, index)
+            : new IntPtr(GetWindowLong32(windowHandle, index));
+    }
+
+    private static IntPtr SetWindowLongPtr(IntPtr windowHandle, int index, IntPtr value)
+    {
+        return IntPtr.Size == 8
+            ? SetWindowLongPtr64(windowHandle, index, value)
+            : new IntPtr(SetWindowLong32(windowHandle, index, value.ToInt32()));
+    }
+
+    private static void EnableBlurBehind(IntPtr windowHandle)
     {
         var blurRegion = CreateRectRgn(-2, -2, -1, -1);
         try
@@ -199,7 +332,7 @@ public sealed partial class MainWindow : WindowEx
                 BlurRegion = blurRegion
             };
 
-            DwmEnableBlurBehindWindow(WinRT.Interop.WindowNative.GetWindowHandle(window), ref blurBehind);
+            _ = DwmEnableBlurBehindWindow(windowHandle, ref blurBehind);
         }
         finally
         {
@@ -233,9 +366,77 @@ public sealed partial class MainWindow : WindowEx
             => compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 255, 255, 255));
     }
 
+    private const int NativeBooleanTrue = 1;
+
     private const int DwmBlurBehindEnable = 0x00000001;
 
     private const int DwmBlurBehindBlurRegion = 0x00000002;
+
+    private const int DwmWindowAttributeNonClientRenderingPolicy = 2;
+
+    private const int DwmWindowAttributeWindowCornerPreference = 33;
+
+    private const int DwmWindowAttributeBorderColor = 34;
+
+    private const int DwmWindowAttributeSystemBackdropType = 38;
+
+    private const int DwmWindowAttributeRedirectionBitmapAlpha = 39;
+
+    private const int DwmNonClientRenderingPolicyDisabled = 1;
+
+    private const int DwmWindowCornerPreferenceDoNotRound = 1;
+
+    private const int DwmSystemBackdropTypeNone = 1;
+
+    private const uint DwmColorNone = 0xFFFFFFFE;
+
+    private const int WindowLongIndexStyle = -16;
+
+    private const int WindowLongIndexExtendedStyle = -20;
+
+    private const long NativeWindowStyleBorder = 0x00800000L;
+
+    private const long NativeWindowStyleCaption = 0x00C00000L;
+
+    private const long NativeWindowStyleDialogFrame = 0x00400000L;
+
+    private const long NativeWindowStyleThickFrame = 0x00040000L;
+
+    private const long NativeWindowFrameStyles = NativeWindowStyleBorder | NativeWindowStyleCaption | NativeWindowStyleDialogFrame | NativeWindowStyleThickFrame;
+
+    private const long ExtendedWindowStyleDialogModalFrame = 0x00000001L;
+
+    private const long ExtendedWindowStyleWindowEdge = 0x00000100L;
+
+    private const long ExtendedWindowStyleClientEdge = 0x00000200L;
+
+    private const long ExtendedWindowStyleStaticEdge = 0x00020000L;
+
+    private const long NativeWindowShadowExtendedStyles =
+        ExtendedWindowStyleDialogModalFrame |
+        ExtendedWindowStyleWindowEdge |
+        ExtendedWindowStyleClientEdge |
+        ExtendedWindowStyleStaticEdge;
+
+    private const uint SetWindowPositionNoSize = 0x0001;
+
+    private const uint SetWindowPositionNoMove = 0x0002;
+
+    private const uint SetWindowPositionNoZOrder = 0x0004;
+
+    private const uint SetWindowPositionNoActivate = 0x0010;
+
+    private const uint SetWindowPositionFrameChanged = 0x0020;
+
+    private const uint SetWindowPositionNoOwnerZOrder = 0x0200;
+
+    private const uint SetWindowPositionFrameChangedFlags =
+        SetWindowPositionNoSize |
+        SetWindowPositionNoMove |
+        SetWindowPositionNoZOrder |
+        SetWindowPositionNoActivate |
+        SetWindowPositionFrameChanged |
+        SetWindowPositionNoOwnerZOrder;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct DwmBlurBehind
@@ -253,6 +454,28 @@ public sealed partial class MainWindow : WindowEx
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmEnableBlurBehindWindow(IntPtr windowHandle, ref DwmBlurBehind blurBehind);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr windowHandle, int attribute, ref uint attributeValue, int attributeSize);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr windowHandle, int attribute, ref int attributeValue, int attributeSize);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
+    private static extern int GetWindowLong32(IntPtr windowHandle, int index);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr windowHandle, int index);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+    private static extern int SetWindowLong32(IntPtr windowHandle, int index, int value);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr windowHandle, int index, IntPtr value);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr windowHandle, IntPtr windowHandleInsertAfter, int x, int y, int width, int height, uint flags);
 
     [DllImport("gdi32.dll")]
     private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
