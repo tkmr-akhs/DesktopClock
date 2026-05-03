@@ -2,6 +2,7 @@
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
+using DesktopClock.Core.Helpers;
 using DesktopClock.Core.Models;
 using DesktopClock.Models;
 
@@ -115,46 +116,17 @@ public class GoogleCalendarService : IGoogleCalendarService
                 complete = true;
                 foreach (var keyValuePair in _calendarSettingsDictionary)
                 {
-                    var displayType = keyValuePair.Value.DisplayType;
-
-                    if (displayType == GoogleCalendarDisplayType.Hidden) continue;
-
-                    var request = _calendarService.Events.List(keyValuePair.Key);
-                    request.TimeMin = monthlyCalendar.MinDate.ToDateTime(TimeOnly.MinValue);
-                    request.TimeMax = monthlyCalendar.MaxDate.AddDays(-1).ToDateTime(TimeOnly.MaxValue);
-
-                    var events = await request.ExecuteAsync(cancellationToken);
-
                     try
                     {
-                        foreach (var eventItem in events.Items)
-                        {
-                            var eventRange = ToDateOnlyRange(eventItem.Start, eventItem.End, monthlyCalendar.MinDate, monthlyCalendar.MaxDate.AddDays(1));
-                            if (displayType == GoogleCalendarDisplayType.Events)
-                            {
-                                foreach (var day in eventRange.GetAllDatesInRange())
-                                {
-                                    monthlyCalendar.MarkEntry(day, isScheduledDay: true);
-                                }
-                            }
-                            else if (displayType == GoogleCalendarDisplayType.NonWorkingDay)
-                            {
-                                foreach (var day in eventRange.GetAllDatesInRange())
-                                {
-                                    monthlyCalendar.MarkEntry(day, isNonWorkingDay: true);
-                                    monthlyCalendar.AddEntryInformation(day, eventItem.Summary);
-                                }
-                            }
-                        }
+                        await ApplyCalendarScheduleAsync(_calendarService, keyValuePair.Key, keyValuePair.Value, monthlyCalendar, cancellationToken);
                     }
-                    catch (ArgumentException exp)
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
-                        if (cancellationToken.IsCancellationRequested) return;
-                        else
-                        {
-                            await _loggingService.WriteLogAsync(nameof(GoogleCalendarService), nameof(ApplyScheduleToMonthlyCalendar), exception: exp);
-                            throw;
-                        }
+                        throw;
+                    }
+                    catch (Exception exp)
+                    {
+                        await _loggingService.WriteLogAsync(nameof(GoogleCalendarService), nameof(ApplyScheduleToMonthlyCalendar), $"Failed to apply {keyValuePair.Value.Name} ({keyValuePair.Key}).", LogSeverity.Warning, exp);
                     }
                 }
             }
@@ -166,6 +138,61 @@ public class GoogleCalendarService : IGoogleCalendarService
         {
             await _loggingService.WriteLogAsync(nameof(GoogleCalendarService), nameof(ApplyScheduleToMonthlyCalendar), "Google Calendar synchronization failed.", LogSeverity.Warning, exp);
         }
+    }
+
+    private async Task ApplyCalendarScheduleAsync(CalendarService calendarService, string calendarId, GoogleCalendarSetting calendarSetting, MonthlyCalendar monthlyCalendar, CancellationToken cancellationToken)
+    {
+        var displayType = calendarSetting.DisplayType;
+
+        if (displayType == GoogleCalendarDisplayType.Hidden) return;
+
+        var requestCalendarId = displayType == GoogleCalendarDisplayType.NonWorkingDay
+            ? GoogleHolidayCalendarHelper.ToPublicHolidayOnlyCalendarId(calendarId)
+            : calendarId;
+
+        var events = await ListEventsAsync(calendarService, requestCalendarId, monthlyCalendar, cancellationToken);
+
+        foreach (var eventItem in events.Items ?? Enumerable.Empty<Event>())
+        {
+            if (eventItem.Start == default || eventItem.End == default) continue;
+
+            try
+            {
+                var eventRange = ToDateOnlyRange(eventItem.Start, eventItem.End, monthlyCalendar.MinDate, monthlyCalendar.MaxDate.AddDays(1));
+                if (displayType == GoogleCalendarDisplayType.Events)
+                {
+                    foreach (var day in eventRange.GetAllDatesInRange())
+                    {
+                        monthlyCalendar.MarkEntry(day, isScheduledDay: true);
+                    }
+                }
+                else if (displayType == GoogleCalendarDisplayType.NonWorkingDay)
+                {
+                    var summary = eventItem.Summary ?? String.Empty;
+
+                    foreach (var day in eventRange.GetAllDatesInRange())
+                    {
+                        monthlyCalendar.MarkEntry(day, isNonWorkingDay: true);
+                        monthlyCalendar.AddEntryInformation(day, summary);
+                    }
+                }
+            }
+            catch (ArgumentException exp)
+            {
+                await _loggingService.WriteLogAsync(nameof(GoogleCalendarService), nameof(ApplyCalendarScheduleAsync), $"Skipped {eventItem.Summary} ({eventItem.Id}).", LogSeverity.Warning, exp);
+            }
+        }
+    }
+
+    private async Task<Events> ListEventsAsync(CalendarService calendarService, string calendarId, MonthlyCalendar monthlyCalendar, CancellationToken cancellationToken)
+    {
+        var request = calendarService.Events.List(calendarId);
+        request.TimeMin = monthlyCalendar.MinDate.ToDateTime(TimeOnly.MinValue);
+        request.TimeMax = monthlyCalendar.MaxDate.AddDays(-1).ToDateTime(TimeOnly.MaxValue);
+        request.SingleEvents = true;
+        request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
+
+        return await request.ExecuteAsync(cancellationToken);
     }
 
     private DateOnlyRange ToDateOnlyRange(EventDateTime start, EventDateTime finish, DateOnly windowStart, DateOnly windowFinish)
