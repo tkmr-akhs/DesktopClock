@@ -353,3 +353,6 @@ MigrationBackup/
 
 /.tmp
 /AGENTS.md
+
+# MSBuild generated metaprojects
+*.metaproj

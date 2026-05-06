@@ -1,8 +1,24 @@
 ﻿<Solution>
-  <Project Path="DesktopClock.Core/DesktopClock.Core.csproj" />
-  <Project Path="DesktopClock.Tests.xUnit/DesktopClock.Tests.xUnit.csproj" />
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="DesktopClock.Core/DesktopClock.Core.csproj">
+    <Platform Project="x64" />
+    <Build Project="false" />
+  </Project>
+  <Project Path="DesktopClock.Tests.xUnit/DesktopClock.Tests.xUnit.csproj">
+    <BuildDependency Project="DesktopClock.Core/DesktopClock.Core.csproj" />
+    <Platform Project="x64" />
+    <Build Project="false" />
+  </Project>
   <Project Path="DesktopClock/DesktopClock.csproj">
+    <BuildDependency Project="DesktopClock.Tests.xUnit/DesktopClock.Tests.xUnit.csproj" />
+    <BuildDependency Project="DesktopClock.Core/DesktopClock.Core.csproj" />
+    <BuildDependency Project="WinFormsWrapper/WinFormsWrapper.csproj" />
     <Platform Project="x64" />
   </Project>
-  <Project Path="WinFormsWrapper/WinFormsWrapper.csproj" />
+  <Project Path="WinFormsWrapper/WinFormsWrapper.csproj">
+    <Platform Project="x64" />
+    <Build Project="false" />
+  </Project>
 </Solution>
