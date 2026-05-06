@@ -1,4 +1,5 @@
 ﻿# TODO
+
 このファイルは、現時点で見つかっている未対応事項や設計上の検討事項をまとめたものです。
 
 ## タグ一覧
@@ -29,13 +30,25 @@
 
 - [ ] `[ux]` `[ref]` 生成ファイルとバックアップファイルの運用を整理する。
   - `.editorconfig` の BOM/CRLF ルールを `.csproj`、`.slnx`、`.md`、`.pu` にも広げる。
-  - `.bak`、`.tmp`、`.metaproj` を無視するか掃除するかの方針を決める。
-  - `DesktopClock.CustomAttributes` 配下に `bin` / `obj` だけが残っているため、必要なプロジェクトか生成物の残骸かを確認する。
+  - `.tmp` と `*.metaproj` は `.gitignore` で無視済みだが、実体が残るため掃除タイミングを決める。
+  - `.bak` を無視するか、検証後に必ず掃除するかの方針を決める。
+  - `DesktopClock.CustomAttributes` 配下に `Generated` / `bin` / `obj` だけが残っているため、必要なプロジェクトか生成物の残骸かを確認する。
+
+- [ ] `[bug]` `[ref]` アプリ起動とウィンドウ生成の初期化順を明示する。
+  - `App.MainWindow` が static 初期化で `new MainWindow()` される一方、`MainWindow` コンストラクターは `App.GetService` に依存しており、Host 構築順に暗黙依存している。
+  - `MainWindow_Activated_FirstTime` と `ActivationService.InitializeAsync` に初期化責務が分散しているため、スタイル、DispatcherQueue、画面監視、サブウィンドウ生成の順序を 1 つの起動フローへ整理する。
+  - UI スレッド前提の処理と `ConfigureAwait(false)` を混在させず、WinUI オブジェクトへ触れる処理は明示的に UI スレッドへ寄せる。
+  - `DateTimeProviderService` のように DI 解決時点で動き始めるサービスは、起動/停止ライフサイクルを Host 側で管理する。
+  - 終了時に `IHost` を破棄していないため、`LoggingService`、`DateTimeProviderService`、`WinFormsTrayIconService` など singleton の停止/破棄方針を統一する。
 
 - [ ] `[bug]` `[spec]` 設定保存と設定 UI の型不一致を修正する。
   - `CalendarStyleSelectorService` は色を `Color` として保存している一方、読み込みは `string` のカラーコードとして読んでいるため、保存形式を統一する。
+  - `CalendarStyleSelectorService` の public setter は `StyleChanged` 発火と保存を迂回できるため、変更経路を `Set...Async` に統一する。
   - `ChangeMarginUnitAsync`、`ChangeClockSizeUnitAsync`、`ChangeAlignmentAsync` は `int` 引数だが XAML から enum を渡しているため、コマンド引数を enum 型へ揃える。
   - `MainViewModel` コンストラクター内で `SetTextStyleAsync` を await せず呼び捨てている箇所を、初期化フローへ移す。
+  - `MainViewModel` はフォント ファミリ/スタイル/太さ/色/縁取り色を公開しているが、設定 UI には高さと単位しかないため、UI を実装するか公開プロパティを削る。
+  - `CalendarStyleSelectorService` には前景/背景/曜日/予定色の変更 API があるが、設定 UI から変更できないため、仕様として必要な色設定を整理する。
+  - `TimeStyleSelectorServiceBase.NumbersSettingsKey` と `Numbers` は保存/読み込みにも UI にもつながっていないため、数字セットのカスタマイズを実装するか削除する。
   - Template Studio のままの About 文言、Privacy URL、`Unit of Hight Size` などの表示文字列を製品仕様に合わせる。
 
 - [ ] `[bug]` `[ref]` `[test]` 時刻ソースを `IDateTimeProviderService` に統一する。
@@ -52,6 +65,8 @@
 - [ ] `[ref]` `[test]` Google Calendar 同期の責務を分割する。
   - Google API アクセス、イベントからドメイン情報への変換、`MonthlyCalendar` への適用を分離する。
   - キャンセル、終日イベント範囲、時間指定イベント範囲、非表示カレンダー、祝日カレンダーまわりのテストを追加する。
+  - 認証成功直後に `CalendarSettings` と Google カレンダー一覧を同期しないため、設定画面のカレンダー一覧が空または古いままになり得る。
+  - Google 連携を無効化したときに `_calendarSettingsDictionary.Clear()` して保存するため、一時的な無効化で表示設定を失ってよいか仕様を決める。
   - `ApplyScheduleToMonthlyCalendar` の `complete` ループは実質 1 回で終わるため、再試行方針を明確にするか削除する。
   - 複数イベントが同じ日にある場合に `CalendarEntry.Information` が上書きされる挙動を、仕様として固定するか集約表示に変える。
   - `GoogleCalendarSetting.Equals` / `GetHashCode` が `Id` を見ていないため、同名同種の別カレンダーを同一扱いしてよいか確認する。
@@ -79,9 +94,12 @@
 
 - [ ] `[bug]` `[test]` カレンダー ドメインの境界条件と通知を修正する。
   - `MonthlyCalendar.MaxDate` と `ContainsKey` の inclusive/exclusive がずれており、末尾日で範囲内判定なのにインデックス外になる可能性を潰す。
+  - `MonthlyCalendar` は `IReadOnlyList<WeeklyCalendar>` と `IReadOnlyDictionary<DateOnly, CalendarEntry>` を同時に実装しているが、`Count` が週数を返すため辞書契約の件数と一致しない。
+  - `MonthlyCalendar.Keys` / `Values` はパディング週を含む一方、`GetEnumerator()` は表示対象 6 週だけを返すため、公開コレクションの範囲を統一する。
   - `MonthlyCalendar.Clear` が各週を 7 回ずつ clear しているため、1 回だけ実行して不要な通知を減らす。
   - `MonthlyCalendar` は `INotifyPropertyChanging` を実装しているが、`PropertyChanging` を発火していないため契約に合わせる。
   - `HolidayDurationCalculator.CheckHolidayCore` は増加する `day` ではなく固定の `checkDay` で範囲確認しているため、範囲外参照を防ぐ。
+  - `DateTimeRange.Includes(DateOnly)` と `DateOnlyRange` の half-open な日付範囲の意味をテストで固定し、Google 終日イベントの終了日 exclusive 仕様とずれないようにする。
 
 - [ ] `[bug]` `[ux]` 複数モニターとウィンドウ配置の挙動を修正する。
   - `WindowAlignmentSelectorService.GetDisplayBounds` は有効な `ScreenId` でも常に 0 番目の画面を返す分岐になっているため、選択画面を正しく使う。
@@ -115,6 +133,23 @@
   - `PageService` のキーが ViewModel の `FullName` 文字列であるため、型安全なナビゲーション契約に寄せる。
   - `SubWindowHelper.ActiveWindows` が可変 `List` を公開しているため、Repository 経由で管理する。
 
+- [ ] `[bug]` `[ref]` ローカル設定と Google `IDataStore` 実装の削除/同時更新の意味づけを整理する。
+  - `LocalSettingsDataStoreService.DeleteAsync` と `ClearAsync` はキー削除ではなく default 値保存になっており、Google token の削除契約として正しいか確認する。
+  - `ClearAsync` は現在プロセスで触れた `_keys` しか対象にしないため、過去に保存された token や設定が残る可能性を潰す。
+  - `LocalSettingsService` は複数の `SaveSettingAsync` が同時に走ると `_settings` とファイル保存が競合し得るため、直列化または設定単位の保存方式を決める。
+  - パッケージ版と非パッケージ版で保存先と JSON の入れ子構造が異なるため、移行/互換性をテストで固定する。
+
+- [ ] `[ref]` レイヤ構成を App / Domain / Infra / Presentation の責務に合わせて再配置する。
+  - `DesktopClock` プロジェクト内に Contracts / Services / Models / Helpers が混在しており、WinUI なしで App 層の振る舞いをテストしづらい。
+  - `DesktopClock.Core` に未使用の `CommunityToolkit.Mvvm` 参照があり、Domain/Core が UI/MVVM 系依存を持たないように整理する。
+  - `DesktopClock.Models` は `Windows.UI.Color` を含む表示設定、永続化 DTO、ドメイン寄り設定が混ざっているため、用途別に型を分ける。
+  - `DesktopClock.Contracts.Services` と `DesktopClock.Core.Contracts.Services` の配置基準を決め、Presentation から App/Domain への依存方向を一貫させる。
+
+- [ ] `[ux]` `[ref]` カレンダー画面の操作 UI とコマンド契約を整理する。
+  - `CalendarPage.xaml` の `today<<` / `reload` がハードコード英語で、リソース化や表示文言の品質が設定画面と揃っていない。
+  - `NextMonthCommand` / `PreviousMonthCommand` / `BackToThisMonthCommand` は非同期ラムダだが実質同期処理なので、`RelayCommand` / `AsyncRelayCommand` の使い分けを明確にする。
+  - 更新中、認証未設定、同期失敗時の表示状態がないため、ユーザーが再読み込み結果を判断しづらい。
+
 ## 低優先度
 
 - [ ] `[ref]` `[test]` nullable チェックとドキュメンテーション コメントを整備する。
@@ -122,11 +157,19 @@
   - `RegistryHelper` の nullable 注釈警告と到達不能コードを修正する。
   - public メンバーの XML ドキュメント不足を補い、Domain/Core の public 未満メンバーにも必要な説明を加える。
   - `ImagingHelper.CombineBitmaps` のように非 nullable 戻り値で `null` を返し得る API を修正する。
+  - `ClockViewModel` の `private　void` のような全角スペース混入を検出し、コード上必要のない不可視/非 ASCII 文字を除去する。
+
+- [ ] `[ref]` Template Studio 由来の未使用コードと依存を整理する。
+  - `SettingsStorageExtensions` は現在参照されておらず、`IsRoamingStorageAvailable` の戻り値も名前と逆に見えるため、使うなら修正し、使わないなら削除する。
+  - `IReadOnlyReplaceableList<T>` など未使用の抽象を残すか削除するか決める。
+  - `FrameExtensions.GetPageViewModel` の reflection 前提はナビゲーション契約整理後に不要化できるか確認する。
 
 ## TODO 整理メモ
 
 - `設定保存と設定 UI の型不一致` は表示文言の課題も含むが、実行時挙動への影響が大きいため高優先度に置く。
 - `nullable チェックとドキュメンテーション コメント` は重要だが、個別の実害は他の項目に分離済みのため低優先度に置く。
+- `Google 認証状態の名前と契約` と `Google Calendar 同期の責務分割` は近いが、前者は認証状態の意味、後者はカレンダー一覧/予定同期の実行責務として分けて追跡する。
+- `生成ファイルとバックアップファイルの運用` は `.tmp` / `*.metaproj` の ignore 設定自体は済んでいるため、残骸掃除と `.bak` 方針を主目的として残す。
 
 ## 対応を見送る事項 (無期ペンディング)
 
