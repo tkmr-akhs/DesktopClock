@@ -39,7 +39,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DesktopClock.Core\DesktopClock.Core.csproj" />
-    <ProjectReference Include="..\WinFormsWrapper\WinFormsWrapper.csproj" />
+    <ProjectReference Include="..\DesktopClock.Win32\DesktopClock.Win32.csproj" />
   </ItemGroup>
 
   <ItemGroup>

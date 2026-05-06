@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using DesktopClock.Helpers;
+using DesktopClock.Win32.Runtime;
 using Serilog;
 using Windows.Storage;
 
@@ -14,9 +14,11 @@ internal class LoggingService : ILoggingService
 
     private readonly string _localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
     private readonly string _applicationDataFolder;
+    private readonly IPackageIdentityService _packageIdentityService;
 
-    public LoggingService()
+    public LoggingService(IPackageIdentityService packageIdentityService)
     {
+        _packageIdentityService = packageIdentityService;
         _applicationDataFolder = Path.Combine(_localApplicationData, _defaultApplicationDataFolder);
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
@@ -40,10 +42,10 @@ internal class LoggingService : ILoggingService
 
     private string GetLoggingFolderPath()
     {
-        if (RuntimeHelper.IsMSIX)
+        if (_packageIdentityService.IsPackaged)
         {
             var dirInfo = new DirectoryInfo(ApplicationData.Current.LocalFolder.Path);
-            return Path.Combine(dirInfo.Parent.FullName, "AppData");
+            return Path.Combine(dirInfo.Parent!.FullName, "AppData");
         }
         else
         {
@@ -87,7 +89,7 @@ internal class LoggingService : ILoggingService
         }
     }
 
-    private string EscapeSpecialCharacters(string message)
+    private static string EscapeSpecialCharacters(string message)
     {
         if (String.IsNullOrEmpty(message)) return String.Empty;
 

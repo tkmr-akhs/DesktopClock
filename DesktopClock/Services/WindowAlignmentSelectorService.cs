@@ -1,7 +1,7 @@
 ﻿using Windows.Graphics;
-using DesktopClock.Helpers;
 using DesktopClock.Models;
 using DesktopClock.Views;
+using DesktopClock.Win32.Windowing;
 
 namespace DesktopClock.Services;
 
@@ -11,17 +11,19 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
 
     private const int DefaultBetweenWindowsMargin = 10;
 
-    public WindowAlignmentSetting AlignmentSetting { get; private set; }
+    public WindowAlignmentSetting AlignmentSetting { get; private set; } = new();
 
     private readonly IWindowRepositoryService _windowRepositoryService;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IScreenChangeDetectionService _screenChangedDetectionService;
+    private readonly IWindowSizeService _windowSizeService;
 
-    public WindowAlignmentSelectorService(ILocalSettingsService localSettingsService, IWindowRepositoryService windowRepositoryService, IScreenChangeDetectionService screenChangedDetectionService)
+    public WindowAlignmentSelectorService(ILocalSettingsService localSettingsService, IWindowRepositoryService windowRepositoryService, IScreenChangeDetectionService screenChangedDetectionService, IWindowSizeService windowSizeService)
     {
         _localSettingsService = localSettingsService;
         _windowRepositoryService = windowRepositoryService;
         _screenChangedDetectionService = screenChangedDetectionService;
+        _windowSizeService = windowSizeService;
     }
 
     public async Task InitializeAsync()
@@ -68,8 +70,8 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
         var clockWidth = clockPage.GetClockWidth();
         var calendarPageSize = calendarPage.GetActualSize();
 
-        WindowSizeHelper.ResizeClientArea(clockWindow, clockPageSize);
-        WindowSizeHelper.ResizeClientArea(calendarWindow, new Windows.Foundation.Size(clockWidth, calendarPageSize.Height));
+        _windowSizeService.ResizeClientArea(clockWindow, clockPageSize);
+        _windowSizeService.ResizeClientArea(calendarWindow, new Windows.Foundation.Size(clockWidth, calendarPageSize.Height));
 
         clockWindow.Show();
         calendarWindow.Show();
@@ -82,7 +84,6 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
 
         _windowRepositoryService.TryGetWindowOfPage<CalendarPage>(out var calendarWindowOrNull);
         calendarWindow = calendarWindowOrNull ?? throw new InvalidOperationException();
-
     }
 
     private void ArrangePosition(WindowEx clockWindow, WindowEx calendarWindow)
@@ -127,7 +128,6 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
             resultX = screenBounds.X + screenBounds.Width - marginX - clockWindow.AppWindow.Size.Width;
         }
 
-
         int resultY;
         if (AlignmentSetting.IsTop)
         {
@@ -151,7 +151,7 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
         var clockWindowWidth = clockWindow.AppWindow.Size.Width;
         var calendarWindowWidth = calendarWindow.AppWindow.Size.Width;
 
-        var calenarWindowX = clockWindowPosition.X + (clockWindowWidth - calendarWindowWidth) / 2;
+        var calendarWindowX = clockWindowPosition.X + (clockWindowWidth - calendarWindowWidth) / 2;
 
         int calendarWindowY;
         if (AlignmentSetting.IsBottom)
@@ -160,13 +160,11 @@ internal class WindowAlignmentSelectorService : IWindowAlignmentSelectorService
         }
         else
         {
-
             calendarWindowY = clockWindowPosition.Y + clockWindow.AppWindow.Size.Height + DefaultBetweenWindowsMargin;
         }
 
-        return new PointInt32(calenarWindowX, calendarWindowY);
+        return new PointInt32(calendarWindowX, calendarWindowY);
     }
-
 
     private System.Drawing.Rectangle GetDisplayBounds()
     {

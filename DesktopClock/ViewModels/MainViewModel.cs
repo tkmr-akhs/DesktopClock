@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using DesktopClock.Helpers;
 using DesktopClock.Models;
 using DesktopClock.Services;
+using DesktopClock.Win32.Runtime;
 using Microsoft.UI.Xaml;
 using Windows.ApplicationModel;
 using Windows.UI;
@@ -25,6 +26,7 @@ public partial class MainViewModel : ObservableRecipient
     private readonly IDateStyleSelectorService _dateStyleSelectorService;
     private readonly IGooglePkceService _googlePkceService;
     private readonly IGoogleCalendarService _googleCalendarService;
+    private readonly IPackageIdentityService _packageIdentityService;
 
     [ObservableProperty]
     private WindowAlignmentUnit _clockSizeUnit;
@@ -130,7 +132,8 @@ public partial class MainViewModel : ObservableRecipient
         IMinuteStyleSelectorService minuteStyleSelectorService,
         IDateStyleSelectorService dateTimeStyleSelectorService,
         IGooglePkceService googlePkceService,
-        IGoogleCalendarService googleCalendarService)
+        IGoogleCalendarService googleCalendarService,
+        IPackageIdentityService packageIdentityService)
     {
         // Set services to fields
         _loggingService = loggingService;
@@ -143,6 +146,7 @@ public partial class MainViewModel : ObservableRecipient
         _dateStyleSelectorService = dateTimeStyleSelectorService;
         _googlePkceService = googlePkceService;
         _googleCalendarService = googleCalendarService;
+        _packageIdentityService = packageIdentityService;
 
         // Set current settings to properties
         _clockSizeUnit = _hourStyleSelectorService.TextSize.SizeUnit;
@@ -402,11 +406,11 @@ public partial class MainViewModel : ObservableRecipient
 
     #region Helper Methods
 
-    private static string GetVersionDescription()
+    private string GetVersionDescription()
     {
         Version version;
 
-        if (RuntimeHelper.IsMSIX)
+        if (_packageIdentityService.IsPackaged)
         {
             var packageVersion = Package.Current.Id.Version;
 

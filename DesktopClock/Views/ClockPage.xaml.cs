@@ -1,6 +1,7 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using DesktopClock.ViewModels;
+using DesktopClock.Win32.Input;
 
 namespace DesktopClock.Views;
 
@@ -8,6 +9,8 @@ public sealed partial class ClockPage : Page
 {
     private readonly IWindowRepositoryService _windowRepositoryService;
     private readonly IWindowAlignmentSelectorService _windowAlignmentSelectorService;
+    private readonly ICursorService _cursorService;
+    private bool _isWaitingForPointerExit;
 
     public ClockViewModel ViewModel
     {
@@ -22,6 +25,7 @@ public sealed partial class ClockPage : Page
 
         _windowRepositoryService = App.GetService<IWindowRepositoryService>();
         _windowAlignmentSelectorService = App.GetService<IWindowAlignmentSelectorService>();
+        _cursorService = App.GetService<ICursorService>();
     }
 
     public Windows.Foundation.Size GetActualSize()
@@ -43,62 +47,57 @@ public sealed partial class ClockPage : Page
 
     private async void Page_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
-        HideWindowAndWaitPointerExit();
+        await HideWindowAndWaitPointerExitAsync();
     }
 
-    private void Page_DragEnter(object sender, DragEventArgs e)
+    private async void Page_DragEnter(object sender, DragEventArgs e)
     {
-        HideWindowAndWaitPointerExit();
+        await HideWindowAndWaitPointerExitAsync();
     }
 
-    private async void HideWindowAndWaitPointerExit()
+    private async Task HideWindowAndWaitPointerExitAsync()
     {
-        var clockWindow = _windowRepositoryService.GetWindowOfPage<ClockPage>();
-
-        //System.Diagnostics.Debug.WriteLine("In");
-        clockWindow.Hide();
-
-        var winPosSize = new WindowPosAndSize()
+        if (_isWaitingForPointerExit)
         {
-            Left = clockWindow.AppWindow.Position.X,
-            Top = clockWindow.AppWindow.Position.Y,
-            Width = clockWindow.AppWindow.Size.Width,
-            Height = clockWindow.AppWindow.Size.Height
-        };
-
-        var task = new Task<Visibility>((x) =>
-        {
-            WaitMouseLeave(x);
-            return Visibility.Visible;
-        }, winPosSize);
-        task.Start();
-
-
-        if (await task == Visibility.Visible) {
-            clockWindow.Show();
+            return;
         }
 
-        return;
+        _isWaitingForPointerExit = true;
+
+        try
+        {
+            var clockWindow = _windowRepositoryService.GetWindowOfPage<ClockPage>();
+            clockWindow.Hide();
+
+            var winPosSize = new WindowPosAndSize
+            {
+                Left = clockWindow.AppWindow.Position.X,
+                Top = clockWindow.AppWindow.Position.Y,
+                Width = clockWindow.AppWindow.Size.Width,
+                Height = clockWindow.AppWindow.Size.Height
+            };
+
+            await WaitMouseLeaveAsync(winPosSize);
+            clockWindow.Show();
+        }
+        finally
+        {
+            _isWaitingForPointerExit = false;
+        }
     }
 
     /// <summary>
     /// ウィンドウ上からマウスが出るのを待機する。
     /// </summary>
-    /// <param name="winPosSizeObject">ウィンドウ位置およびサイズ</param>
-    private static void WaitMouseLeave(object winPosSizeObject)
+    /// <param name="winPosSize">ウィンドウ位置およびサイズ。</param>
+    private async Task WaitMouseLeaveAsync(WindowPosAndSize winPosSize)
     {
-        if (winPosSizeObject is WindowPosAndSize winPosSize)
+        System.Drawing.Point cursorPos;
+        do
         {
-            System.Drawing.Point cursorPos;
-            do
-            {
-                cursorPos = System.Windows.Forms.Cursor.Position;
-                //System.Diagnostics.Debug.WriteLine($"In: cursorPos({cursorPos.X}, {cursorPos.X}) / winPosSize({winPosSize.Left} {winPosSize.Width}, {winPosSize.Top} {winPosSize.Height})");
-                System.Threading.Thread.Sleep(500);
-            } while (OnWindow(cursorPos, winPosSize));
-
-            //System.Diagnostics.Debug.WriteLine("Out");
-        }
+            cursorPos = _cursorService.GetCursorPosition();
+            await Task.Delay(500);
+        } while (OnWindow(cursorPos, winPosSize));
     }
 
     /// <summary>

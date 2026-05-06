@@ -32,17 +32,6 @@
   - `.bak`、`.tmp`、`.metaproj` を無視するか掃除するかの方針を決める。
   - `DesktopClock.CustomAttributes` 配下に `bin` / `obj` だけが残っているため、必要なプロジェクトか生成物の残骸かを確認する。
 
-- [ ] `[ref]` Win32/DWM のウィンドウカスタマイズを `MainWindow` から分離する。
-  - ウィンドウ枠、デスクトップ所有者、透過背景、通知アイコンの処理を、それぞれ焦点の絞られたサービスへ切り出す。
-  - Presentation 層を薄く保ち、テストしやすい構造にする。
-  - `MainWindow` から `App.GetService` によるサービスロケータ呼び出しを減らし、初期化順を DI で追えるようにする。
-
-- [ ] `[ref]` `[spec]` `WinFormsWrapper` の責務と実装範囲を整理する。
-  - `NotifyIcon.AddMenuItem(string, Stream, ...)` が public なのに未実装のため、実装するか削除する。
-  - `NotifyIcon.Dispose` は `new` で隠すのではなく `Dispose(bool)` の override に寄せ、アイコン/画像/ストリームの破棄責務を明確にする。
-  - `System.Windows.Forms.Keys` をほぼ丸ごと再定義しているため、必要最小限の型にするか WinForms 型を境界内へ閉じ込める。
-  - WinForms 依存を Presentation から直接見せず、通知領域アイコン用のポートとして扱う。
-
 - [ ] `[bug]` `[spec]` 設定保存と設定 UI の型不一致を修正する。
   - `CalendarStyleSelectorService` は色を `Color` として保存している一方、読み込みは `string` のカラーコードとして読んでいるため、保存形式を統一する。
   - `ChangeMarginUnitAsync`、`ChangeClockSizeUnitAsync`、`ChangeAlignmentAsync` は `int` 引数だが XAML から enum を渡しているため、コマンド引数を enum 型へ揃える。
@@ -129,7 +118,7 @@
 ## 低優先度
 
 - [ ] `[ref]` `[test]` nullable チェックとドキュメンテーション コメントを整備する。
-  - `DesktopClock.Core` と `WinFormsWrapper` で nullable を有効化し、警告を段階的に潰す。
+  - `DesktopClock.Core` で nullable を有効化し、警告を段階的に潰す。
   - `RegistryHelper` の nullable 注釈警告と到達不能コードを修正する。
   - public メンバーの XML ドキュメント不足を補い、Domain/Core の public 未満メンバーにも必要な説明を加える。
   - `ImagingHelper.CombineBitmaps` のように非 nullable 戻り値で `null` を返し得る API を修正する。
@@ -151,7 +140,15 @@
 
 ### 高優先度だったもの
 
-なし。
+- [x] `[ref]` Win32/DWM のウィンドウカスタマイズを `MainWindow` から分離する。
+  - `DesktopClock.Win32` を Win32/API 統合境界として追加し、Native P/Invoke、ウィンドウ枠、デスクトップ所有者、透過背景、タイトルバー、通知領域アイコンをサービス化した。
+  - `MainWindow` から DWM/User32/GDI32 の直接呼び出しを削除した。
+  - `WindowChromeOptions` による汎用適用 API に寄せ、アプリ固有のウィンドウ種別を Win32 境界へ追加しなくて済む形にした。
+
+- [x] `[ref]` `[spec]` `WinFormsWrapper` の責務と実装範囲を整理する。
+  - `WinFormsWrapper` を `DesktopClock.Win32` に改名し、WinForms 依存を通知領域アイコンの実装サービス内へ閉じ込めた。
+  - 未実装 public API と `System.Windows.Forms.Keys` の再定義を削除した。
+  - `TrayIconOptions` / `TrayIconMenuItem` によるメニュー構成へ変更し、メニュー追加や並び替えでは Win32 実装を変更しなくて済む形にした。
 
 ### 中優先度だったもの
 

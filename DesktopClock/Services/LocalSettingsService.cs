@@ -3,8 +3,8 @@ using System.Text.Json;
 using Windows.Storage;
 using DesktopClock.Core.Contracts.Services;
 using DesktopClock.Core.Helpers;
-using DesktopClock.Helpers;
 using DesktopClock.Models;
+using DesktopClock.Win32.Runtime;
 
 namespace DesktopClock.Services;
 
@@ -15,6 +15,7 @@ public class LocalSettingsService : ILocalSettingsService
 
     private readonly IFileService _fileService;
     private readonly LocalSettingsOptions _options;
+    private readonly IPackageIdentityService _packageIdentityService;
 
     private readonly string _localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
     private readonly string _applicationDataFolder;
@@ -24,10 +25,11 @@ public class LocalSettingsService : ILocalSettingsService
 
     private bool _isInitialized;
 
-    public LocalSettingsService(IFileService fileService, IOptions<LocalSettingsOptions> options)
+    public LocalSettingsService(IFileService fileService, IOptions<LocalSettingsOptions> options, IPackageIdentityService packageIdentityService)
     {
         _fileService = fileService;
         _options = options.Value;
+        _packageIdentityService = packageIdentityService;
 
         _applicationDataFolder = Path.Combine(_localApplicationData, _options.ApplicationDataFolder ?? _defaultApplicationDataFolder);
         _localsettingsFile = _options.LocalSettingsFile ?? _defaultLocalSettingsFile;
@@ -48,7 +50,7 @@ public class LocalSettingsService : ILocalSettingsService
 
     public async Task<T?> ReadSettingAsync<T>(string key)
     {
-        if (RuntimeHelper.IsMSIX)
+        if (_packageIdentityService.IsPackaged)
         {
             if (ApplicationData.Current.LocalSettings.Values.TryGetValue(key, out var obj))
             {
@@ -70,7 +72,7 @@ public class LocalSettingsService : ILocalSettingsService
 
     public async Task SaveSettingAsync<T>(string key, T value)
     {
-        if (RuntimeHelper.IsMSIX)
+        if (_packageIdentityService.IsPackaged)
         {
             ApplicationData.Current.LocalSettings.Values[key] = await Json.StringifyAsync(value);
         }
@@ -86,7 +88,7 @@ public class LocalSettingsService : ILocalSettingsService
 
     public async Task<bool> RemoveSettingAsync<T>(string key)
     {
-        if (RuntimeHelper.IsMSIX)
+        if (_packageIdentityService.IsPackaged)
         {
             return ApplicationData.Current.LocalSettings.Values.Remove(key);
         }

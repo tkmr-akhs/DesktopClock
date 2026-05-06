@@ -1,43 +1,83 @@
-﻿using DesktopClock.Helpers;
-using Windows.UI.ViewManagement;
-using DesktopClock.Services;
-using WinFormsWrapper;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Windowing;
+﻿using DesktopClock.Services;
+using DesktopClock.Helpers;
 using DesktopClock.Views;
-using System.Runtime.InteropServices;
+using DesktopClock.Win32.Tray;
+using DesktopClock.Win32.Windowing;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
+using Windows.UI.ViewManagement;
 
 namespace DesktopClock;
 
 public sealed partial class MainWindow : WindowEx
 {
-    private Microsoft.UI.Dispatching.DispatcherQueue dispatcherQueue;
-
-    private UISettings settings;
-
-    internal NotifyIcon DesktopClockNotifyIcon;
-
+    private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcherQueue;
+    private readonly UISettings _settings;
+    private readonly ILoggingService _loggingService;
     private readonly IWindowRepositoryService _windowRepositoryService;
+    private readonly IWindowChromeService _windowChromeService;
+    private readonly ITrayIconService _trayIconService;
 
-    private readonly Windows.UI.Color transparentColor = Windows.UI.Color.FromArgb(0, 0, 0, 0);
+    private static readonly WindowChromeOptions SettingsWindowChromeOptions = new()
+    {
+        Width = 730,
+        Height = 530,
+        IsMaximizable = false,
+        IsShownInSwitchers = false,
+        MinimizeAfterApplying = true
+    };
+
+    private static readonly WindowChromeOptions ClockWindowChromeOptions = new()
+    {
+        IsResizable = false,
+        IsMaximizable = false,
+        IsMinimizable = false,
+        IsShownInSwitchers = false,
+        IsAlwaysOnTop = true,
+        BackdropKind = WindowBackdropKind.Transparent,
+        UseTransparentTitleBar = true,
+        HideSystemFrame = true,
+        RemoveStandardWindowFrame = true,
+        SuppressWindowShadow = true
+    };
+
+    private static readonly WindowChromeOptions CalendarWindowChromeOptions = new()
+    {
+        IsResizable = false,
+        IsMaximizable = false,
+        IsMinimizable = false,
+        IsTitleBarVisible = false,
+        IsShownInSwitchers = false,
+        BackdropKind = WindowBackdropKind.HostBlur,
+        UseTransparentTitleBar = true,
+        OwnerKind = WindowOwnerKind.DesktopShell,
+        ZOrderKind = WindowZOrderKind.Bottom
+    };
+
+    private static readonly WindowChromeOptions SuppressWindowShadowOptions = new()
+    {
+        SuppressWindowShadow = true
+    };
 
     public MainWindow()
     {
         InitializeComponent();
-        
+
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico"));
         Content = null;
         Title = "AppDisplayName".GetLocalized();
 
         // Theme change code picked from https://github.com/microsoft/WinUI-Gallery/pull/1239
-        dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-        settings = new UISettings();
-        settings.ColorValuesChanged += Settings_ColorValuesChanged; // cannot use FrameworkElement.ActualThemeChanged event
+        _dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _settings = new UISettings();
+        _settings.ColorValuesChanged += Settings_ColorValuesChanged;
 
+        _loggingService = App.GetService<ILoggingService>();
         _windowRepositoryService = App.GetService<IWindowRepositoryService>();
+        _windowChromeService = App.GetService<IWindowChromeService>();
+        _trayIconService = App.GetService<ITrayIconService>();
 
         Activated += MainWindow_Activated_FirstTime;
-
         AppWindow.Closing += MainWindow_Closing;
     }
 
@@ -71,11 +111,7 @@ public sealed partial class MainWindow : WindowEx
 
     private void CustomizeMainWindow()
     {
-        this.Width = 730;
-        this.Height = 530;
-        this.IsMaximizable = false;
-        this.IsShownInSwitchers = false;
-        this.Minimize();
+        _windowChromeService.Apply(this, SettingsWindowChromeOptions);
     }
 
     private void CreateClockWindow()
@@ -83,15 +119,7 @@ public sealed partial class MainWindow : WindowEx
         _windowRepositoryService.TryAddWindowOfPage<ClockPage>();
         var clockWindow = _windowRepositoryService.GetWindowOfPage<ClockPage>();
 
-        clockWindow.IsResizable = false;
-        clockWindow.IsMaximizable = false;
-        clockWindow.IsMinimizable = false;
-        clockWindow.IsShownInSwitchers = false;
-        clockWindow.IsAlwaysOnTop = true;
-        TryApplyTransparentBackdrop(clockWindow);
-        clockWindow.AppWindow.TitleBar.BackgroundColor = transparentColor;
-        clockWindow.AppWindow.TitleBar.InactiveBackgroundColor = transparentColor;
-        TryHideSystemFrame(clockWindow, removeStandardWindowFrame: true, suppressWindowShadow: true);
+        TryConfigureClockWindow(clockWindow);
         clockWindow.SizeChanged += ClockWindow_SizeChanged;
 
         clockWindow.Hide();
@@ -102,16 +130,7 @@ public sealed partial class MainWindow : WindowEx
         _windowRepositoryService.TryAddWindowOfPage<CalendarPage>();
         var calendarWindow = _windowRepositoryService.GetWindowOfPage<CalendarPage>();
 
-        calendarWindow.IsResizable = false;
-        calendarWindow.IsMaximizable = false;
-        calendarWindow.IsMinimizable = false;
-        calendarWindow.IsTitleBarVisible = false;
-        calendarWindow.IsShownInSwitchers = false;
-        TryApplyBlurredBackdrop(calendarWindow);
-        calendarWindow.AppWindow.TitleBar.BackgroundColor = transparentColor;
-        calendarWindow.AppWindow.TitleBar.InactiveBackgroundColor = transparentColor;
-        TrySetDesktopOwner(calendarWindow);
-        calendarWindow.AppWindow.MoveInZOrderAtBottom();
+        TryConfigureCalendarWindow(calendarWindow);
         calendarWindow.ZOrderChanged += CalendarWindow_ZOrderChanged;
 
         calendarWindow.Hide();
@@ -123,20 +142,36 @@ public sealed partial class MainWindow : WindowEx
         var exitText = "NotifyIcon_Exit".GetLocalized();
         var settingsText = "NotifyIcon_Settings".GetLocalized();
 
-        using (var s = GetAssetStream("NotifyIcon.ico"))
+        using var iconStream = GetAssetStream("NotifyIcon.ico");
+        _trayIconService.Initialize(new TrayIconOptions
         {
-            DesktopClockNotifyIcon = new NotifyIcon(s, appDisplayName);
-        }
-        DesktopClockNotifyIcon.AddMenuItem(new NotifyIconMenuItem(settingsText, SettingsMenuItem_Click));
-        DesktopClockNotifyIcon.AddMenuItem(new NotifyIconMenuItem(exitText, ExitMenuItem_Click));
+            IconStream = iconStream,
+            TooltipText = appDisplayName,
+            MenuItems =
+            [
+                new TrayIconMenuItem
+                {
+                    Text = settingsText,
+                    Click = SettingsMenuItem_Click
+                },
+                new TrayIconMenuItem
+                {
+                    Text = exitText,
+                    Click = ExitMenuItem_Click
+                }
+            ]
+        });
     }
 
     private void CalendarWindow_ZOrderChanged(object? sender, ZOrderInfo e)
     {
-        ((WindowEx)sender).AppWindow.MoveInZOrderAtBottom();
+        if (sender is WindowEx calendarWindow)
+        {
+            calendarWindow.AppWindow.MoveInZOrderAtBottom();
+        }
     }
 
-    private static void ClockWindow_SizeChanged(object sender, WindowSizeChangedEventArgs args)
+    private void ClockWindow_SizeChanged(object sender, WindowSizeChangedEventArgs args)
     {
         if (sender is WindowEx clockWindow)
         {
@@ -158,7 +193,7 @@ public sealed partial class MainWindow : WindowEx
 
         clockWindow.Close();
         calendarWindow.Close();
-        DesktopClockNotifyIcon.Dispose();
+        _trayIconService.Dispose();
         App.Current.Exit();
     }
 
@@ -167,336 +202,72 @@ public sealed partial class MainWindow : WindowEx
         return File.OpenRead(Path.Combine(AppContext.BaseDirectory, "Assets", assetFileName));
     }
 
-    private static void TryApplyTransparentBackdrop(WindowEx window)
+    private void TryConfigureClockWindow(WindowEx window)
     {
         try
         {
-            ApplyTransparentBackdrop(window);
+            _windowChromeService.Apply(window, ClockWindowChromeOptions);
         }
         catch (Exception exp)
         {
-            App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TryApplyTransparentBackdrop), "Transparent backdrop is not available.", LogSeverity.Warning, exp);
+            _loggingService.WriteLog(
+                nameof(MainWindow),
+                nameof(TryConfigureClockWindow),
+                "Clock window customization is not available.",
+                LogSeverity.Warning,
+                exp);
         }
     }
 
-    private static void TryApplyBlurredBackdrop(WindowEx window)
+    private void TryConfigureCalendarWindow(WindowEx window)
     {
         try
         {
-            window.SystemBackdrop = new BlurredBackdrop();
-        }
-        catch (Exception exp)
-        {
-            App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TryApplyBlurredBackdrop), "Blurred backdrop is not available.", LogSeverity.Warning, exp);
-        }
-    }
-
-    private static void TrySetDesktopOwner(WindowEx window)
-    {
-        try
-        {
-            if (!DesktopWindowOwnerHelper.TrySetDesktopOwner(window))
+            var result = _windowChromeService.Apply(window, CalendarWindowChromeOptions);
+            if (!result.OwnerApplied)
             {
-                App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TrySetDesktopOwner), "Desktop owner window is not available.", LogSeverity.Warning);
+                _loggingService.WriteLog(
+                    nameof(MainWindow),
+                    nameof(TryConfigureCalendarWindow),
+                    "Desktop owner window is not available.",
+                    LogSeverity.Warning);
             }
         }
         catch (Exception exp)
         {
-            App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TrySetDesktopOwner), "Desktop owner customization is not available.", LogSeverity.Warning, exp);
+            _loggingService.WriteLog(
+                nameof(MainWindow),
+                nameof(TryConfigureCalendarWindow),
+                "Calendar window customization is not available.",
+                LogSeverity.Warning,
+                exp);
         }
     }
 
-    private static void ApplyTransparentBackdrop(WindowEx window)
-    {
-        window.SystemBackdrop = new TransparentBackdrop();
-        EnableTransparentWindow(window);
-    }
-
-    private static void EnableTransparentWindow(WindowEx window)
-    {
-        var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        if (windowHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        var backdropType = DwmSystemBackdropTypeNone;
-        _ = DwmSetWindowAttribute(windowHandle, DwmWindowAttributeSystemBackdropType, ref backdropType, sizeof(int));
-
-        if (!TryEnableRedirectionBitmapAlpha(windowHandle))
-        {
-            EnableBlurBehind(windowHandle);
-        }
-    }
-
-    private static bool TryEnableRedirectionBitmapAlpha(IntPtr windowHandle)
-    {
-        var enableAlpha = NativeBooleanTrue;
-        return DwmSetWindowAttribute(windowHandle, DwmWindowAttributeRedirectionBitmapAlpha, ref enableAlpha, sizeof(int)) >= 0;
-    }
-
-    private static void TryHideSystemFrame(WindowEx window, bool removeStandardWindowFrame, bool suppressWindowShadow)
+    private void TrySuppressWindowShadow(WindowEx window)
     {
         try
         {
-            HideSystemFrame(window, removeStandardWindowFrame, suppressWindowShadow);
+            _windowChromeService.Apply(window, SuppressWindowShadowOptions);
         }
         catch (Exception exp)
         {
-            App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TryHideSystemFrame), "System frame customization is not available.", LogSeverity.Warning, exp);
+            _loggingService.WriteLog(
+                nameof(MainWindow),
+                nameof(TrySuppressWindowShadow),
+                "Window shadow customization is not available.",
+                LogSeverity.Warning,
+                exp);
         }
     }
 
-    private static void HideSystemFrame(WindowEx window, bool removeStandardWindowFrame, bool suppressWindowShadow)
-    {
-        var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        if (window.AppWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.SetBorderAndTitleBar(false, false);
-        }
-
-        if (removeStandardWindowFrame)
-        {
-            RemoveStandardWindowFrame(windowHandle);
-        }
-
-        if (suppressWindowShadow)
-        {
-            SuppressWindowShadow(windowHandle);
-        }
-
-        SuppressAccentColorWindowBorder(windowHandle);
-    }
-
-    private static void TrySuppressWindowShadow(WindowEx window)
-    {
-        try
-        {
-            SuppressWindowShadow(WinRT.Interop.WindowNative.GetWindowHandle(window));
-        }
-        catch (Exception exp)
-        {
-            App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TrySuppressWindowShadow), "Window shadow customization is not available.", LogSeverity.Warning, exp);
-        }
-    }
-
-    private static void RemoveStandardWindowFrame(IntPtr windowHandle)
-    {
-        if (windowHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        var style = GetWindowLongPtr(windowHandle, WindowLongIndexStyle);
-        var newStyle = new IntPtr(style.ToInt64() & ~NativeWindowFrameStyles);
-        _ = SetWindowLongPtr(windowHandle, WindowLongIndexStyle, newStyle);
-        _ = SetWindowPos(windowHandle, IntPtr.Zero, 0, 0, 0, 0, SetWindowPositionFrameChangedFlags);
-    }
-
-    private static void SuppressAccentColorWindowBorder(IntPtr windowHandle)
-    {
-        var borderColor = DwmColorNone;
-        _ = DwmSetWindowAttribute(windowHandle, DwmWindowAttributeBorderColor, ref borderColor, sizeof(uint));
-    }
-
-    private static void SuppressWindowShadow(IntPtr windowHandle)
-    {
-        if (windowHandle == IntPtr.Zero)
-        {
-            return;
-        }
-
-        var renderingPolicy = DwmNonClientRenderingPolicyDisabled;
-        var cornerPreference = DwmWindowCornerPreferenceDoNotRound;
-        _ = DwmSetWindowAttribute(windowHandle, DwmWindowAttributeNonClientRenderingPolicy, ref renderingPolicy, sizeof(int));
-        _ = DwmSetWindowAttribute(windowHandle, DwmWindowAttributeWindowCornerPreference, ref cornerPreference, sizeof(int));
-        _ = TryEnableRedirectionBitmapAlpha(windowHandle);
-        RemoveShadowExtendedWindowStyles(windowHandle);
-        _ = SetWindowPos(windowHandle, IntPtr.Zero, 0, 0, 0, 0, SetWindowPositionFrameChangedFlags);
-    }
-
-    private static void RemoveShadowExtendedWindowStyles(IntPtr windowHandle)
-    {
-        var extendedStyle = GetWindowLongPtr(windowHandle, WindowLongIndexExtendedStyle);
-        var newExtendedStyle = new IntPtr(extendedStyle.ToInt64() & ~NativeWindowShadowExtendedStyles);
-        _ = SetWindowLongPtr(windowHandle, WindowLongIndexExtendedStyle, newExtendedStyle);
-    }
-
-    private static IntPtr GetWindowLongPtr(IntPtr windowHandle, int index)
-    {
-        return IntPtr.Size == 8
-            ? GetWindowLongPtr64(windowHandle, index)
-            : new IntPtr(GetWindowLong32(windowHandle, index));
-    }
-
-    private static IntPtr SetWindowLongPtr(IntPtr windowHandle, int index, IntPtr value)
-    {
-        return IntPtr.Size == 8
-            ? SetWindowLongPtr64(windowHandle, index, value)
-            : new IntPtr(SetWindowLong32(windowHandle, index, value.ToInt32()));
-    }
-
-    private static void EnableBlurBehind(IntPtr windowHandle)
-    {
-        var blurRegion = CreateRectRgn(-2, -2, -1, -1);
-        try
-        {
-            var blurBehind = new DwmBlurBehind
-            {
-                Flags = DwmBlurBehindEnable | DwmBlurBehindBlurRegion,
-                Enable = true,
-                BlurRegion = blurRegion
-            };
-
-            _ = DwmEnableBlurBehindWindow(windowHandle, ref blurBehind);
-        }
-        finally
-        {
-            if (blurRegion != IntPtr.Zero)
-            {
-                DeleteObject(blurRegion);
-            }
-        }
-    }
-
-    // this handles updating the caption button colors correctly when windows system theme is changed
-    // while the app is open
+    // This handles updating the caption button colors correctly when Windows system theme is changed
+    // while the app is open.
     private void Settings_ColorValuesChanged(UISettings sender, object args)
     {
-        // This calls comes off-thread, hence we will need to dispatch it to current app's thread
-        dispatcherQueue.TryEnqueue(() =>
+        _dispatcherQueue.TryEnqueue(() =>
         {
-            TitleBarHelper.ApplySystemThemeToCaptionButtons();
+            _ = App.GetService<IThemeSelectorService>().SetRequestedThemeAsync();
         });
     }
-    
-    private class BlurredBackdrop : CompositionBrushBackdrop
-    {
-        protected override Windows.UI.Composition.CompositionBrush CreateBrush(Windows.UI.Composition.Compositor compositor)
-            => compositor.CreateHostBackdropBrush();
-    }
-
-    private class TransparentBackdrop : CompositionBrushBackdrop
-    {
-        protected override Windows.UI.Composition.CompositionBrush CreateBrush(Windows.UI.Composition.Compositor compositor)
-            => compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 255, 255, 255));
-    }
-
-    private const int NativeBooleanTrue = 1;
-
-    private const int DwmBlurBehindEnable = 0x00000001;
-
-    private const int DwmBlurBehindBlurRegion = 0x00000002;
-
-    private const int DwmWindowAttributeNonClientRenderingPolicy = 2;
-
-    private const int DwmWindowAttributeWindowCornerPreference = 33;
-
-    private const int DwmWindowAttributeBorderColor = 34;
-
-    private const int DwmWindowAttributeSystemBackdropType = 38;
-
-    private const int DwmWindowAttributeRedirectionBitmapAlpha = 39;
-
-    private const int DwmNonClientRenderingPolicyDisabled = 1;
-
-    private const int DwmWindowCornerPreferenceDoNotRound = 1;
-
-    private const int DwmSystemBackdropTypeNone = 1;
-
-    private const uint DwmColorNone = 0xFFFFFFFE;
-
-    private const int WindowLongIndexStyle = -16;
-
-    private const int WindowLongIndexExtendedStyle = -20;
-
-    private const long NativeWindowStyleBorder = 0x00800000L;
-
-    private const long NativeWindowStyleCaption = 0x00C00000L;
-
-    private const long NativeWindowStyleDialogFrame = 0x00400000L;
-
-    private const long NativeWindowStyleThickFrame = 0x00040000L;
-
-    private const long NativeWindowFrameStyles = NativeWindowStyleBorder | NativeWindowStyleCaption | NativeWindowStyleDialogFrame | NativeWindowStyleThickFrame;
-
-    private const long ExtendedWindowStyleDialogModalFrame = 0x00000001L;
-
-    private const long ExtendedWindowStyleWindowEdge = 0x00000100L;
-
-    private const long ExtendedWindowStyleClientEdge = 0x00000200L;
-
-    private const long ExtendedWindowStyleStaticEdge = 0x00020000L;
-
-    private const long NativeWindowShadowExtendedStyles =
-        ExtendedWindowStyleDialogModalFrame |
-        ExtendedWindowStyleWindowEdge |
-        ExtendedWindowStyleClientEdge |
-        ExtendedWindowStyleStaticEdge;
-
-    private const uint SetWindowPositionNoSize = 0x0001;
-
-    private const uint SetWindowPositionNoMove = 0x0002;
-
-    private const uint SetWindowPositionNoZOrder = 0x0004;
-
-    private const uint SetWindowPositionNoActivate = 0x0010;
-
-    private const uint SetWindowPositionFrameChanged = 0x0020;
-
-    private const uint SetWindowPositionNoOwnerZOrder = 0x0200;
-
-    private const uint SetWindowPositionFrameChangedFlags =
-        SetWindowPositionNoSize |
-        SetWindowPositionNoMove |
-        SetWindowPositionNoZOrder |
-        SetWindowPositionNoActivate |
-        SetWindowPositionFrameChanged |
-        SetWindowPositionNoOwnerZOrder;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct DwmBlurBehind
-    {
-        public int Flags;
-
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool Enable;
-
-        public IntPtr BlurRegion;
-
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool TransitionOnMaximized;
-    }
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmEnableBlurBehindWindow(IntPtr windowHandle, ref DwmBlurBehind blurBehind);
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr windowHandle, int attribute, ref uint attributeValue, int attributeSize);
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr windowHandle, int attribute, ref int attributeValue, int attributeSize);
-
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
-    private static extern int GetWindowLong32(IntPtr windowHandle, int index);
-
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
-    private static extern IntPtr GetWindowLongPtr64(IntPtr windowHandle, int index);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
-    private static extern int SetWindowLong32(IntPtr windowHandle, int index, int value);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
-    private static extern IntPtr SetWindowLongPtr64(IntPtr windowHandle, int index, IntPtr value);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(IntPtr windowHandle, IntPtr windowHandleInsertAfter, int x, int y, int width, int height, uint flags);
-
-    [DllImport("gdi32.dll")]
-    private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
-
-    [DllImport("gdi32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DeleteObject(IntPtr objectHandle);
 }

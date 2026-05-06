@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.WinUI.UI.Controls;
 using Microsoft.UI.Xaml.Controls;
-using DesktopClock.Helpers;
 using DesktopClock.ViewModels;
+using DesktopClock.Win32.Windowing;
 using Windows.Graphics;
 
 namespace DesktopClock.Views;
@@ -11,6 +11,7 @@ public sealed partial class CalendarPage : Page
     private readonly IWindowRepositoryService _windowRepositoryService;
     private readonly IWindowAlignmentSelectorService _windowAlignmentSelectorService;
     private readonly IScreenChangeDetectionService _screenChangeDetectionService;
+    private readonly IWindowSizeService _windowSizeService;
 
     private SizeInt32 CurrentSize = new(0, 0);
 
@@ -28,6 +29,7 @@ public sealed partial class CalendarPage : Page
         _windowRepositoryService = App.GetService<IWindowRepositoryService>();
         _windowAlignmentSelectorService = App.GetService<IWindowAlignmentSelectorService>();
         _screenChangeDetectionService = App.GetService<IScreenChangeDetectionService>();
+        _windowSizeService = App.GetService<IWindowSizeService>();
     }
 
     public Windows.Foundation.Size GetActualSize()
@@ -57,13 +59,13 @@ public sealed partial class CalendarPage : Page
     {
         var thisWindow = _windowRepositoryService.GetWindowOfPage<CalendarPage>();
 
-        var columnWidth = WindowSizeHelper.GetClientSize(thisWindow).Width / 8;
+        var columnWidth = _windowSizeService.GetClientSize(thisWindow).Width / 8;
 
         PrevMonthButton.Width = columnWidth / 2;
         NextMonthButton.Width = columnWidth / 2;
 
         CalendarDataGrid.ColumnWidth = new DataGridLength(columnWidth, DataGridLengthUnitType.Pixel);
-        
+
         CalendarDataGrid.RowHeight = columnWidth;
         CalendarDataGrid.MinHeight = columnWidth * 6;
 

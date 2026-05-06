@@ -8,6 +8,11 @@ using DesktopClock.Models;
 using DesktopClock.Services;
 using DesktopClock.ViewModels;
 using DesktopClock.Views;
+using DesktopClock.Win32.Displays;
+using DesktopClock.Win32.Input;
+using DesktopClock.Win32.Runtime;
+using DesktopClock.Win32.Tray;
+using DesktopClock.Win32.Windowing;
 
 namespace DesktopClock;
 
@@ -37,8 +42,6 @@ public partial class App : Application
 
     public static WindowEx MainWindow { get; } = new MainWindow();
 
-    public static UIElement? AppTitlebar { get; set; }
-
     public App()
     {
         InitializeComponent();
@@ -54,6 +57,13 @@ public partial class App : Application
             // Other Activation Handlers
 
             // Services
+            services.AddSingleton<IPackageIdentityService, PackageIdentityService>();
+            services.AddSingleton<IDisplayService, DisplayService>();
+            services.AddSingleton<ICursorService, CursorService>();
+            services.AddSingleton<ITrayIconService, WinFormsTrayIconService>();
+            services.AddSingleton<IWindowChromeService, WindowChromeService>();
+            services.AddSingleton<IWindowSizeService, WindowSizeService>();
+            services.AddSingleton<ITitleBarService, TitleBarService>();
             services.AddSingleton<ILoggingService, LoggingService>();
             services.AddSingleton<ILocalSettingsService, LocalSettingsService>();
             services.AddSingleton<IAutoStartSelectorService, AutoStartSelectorService>();

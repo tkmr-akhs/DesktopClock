@@ -11,10 +11,10 @@
   </Project>
   <Project Path="DesktopClock/DesktopClock.csproj">
     <BuildDependency Project="DesktopClock.Core/DesktopClock.Core.csproj" />
-    <BuildDependency Project="WinFormsWrapper/WinFormsWrapper.csproj" />
+    <BuildDependency Project="DesktopClock.Win32/DesktopClock.Win32.csproj" />
     <Platform Project="x64" />
   </Project>
-  <Project Path="WinFormsWrapper/WinFormsWrapper.csproj">
+  <Project Path="DesktopClock.Win32/DesktopClock.Win32.csproj">
     <Platform Project="x64" />
   </Project>
 </Solution>

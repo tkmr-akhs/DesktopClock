@@ -1,7 +1,7 @@
 ﻿using System.Drawing;
-using WinFormsWrapper;
-using DesktopClock.Models;
 using DesktopClock.Contracts.Services;
+using DesktopClock.Models;
+using DesktopClock.Win32.Displays;
 
 namespace DesktopClock.Services;
 
@@ -11,27 +11,28 @@ internal class ScreenChangedDetectionService : IScreenChangeDetectionService
 
     private readonly ILoggingService _loggingService;
     private readonly IDispatcherQueueService _dispatcherQueueService;
+    private readonly IDisplayService _displayService;
 
     public IReadOnlyList<Rectangle> ScreenBounds { get; private set; } = new List<Rectangle>().AsReadOnly();
 
     public event ScreenChangedEventHandler? ScreenChanged;
 
-    public ScreenChangedDetectionService(ILoggingService loggingService, IDispatcherQueueService dispatcherQueueSerivce)
+    public ScreenChangedDetectionService(ILoggingService loggingService, IDispatcherQueueService dispatcherQueueService, IDisplayService displayService)
     {
         _loggingService = loggingService;
-        _dispatcherQueueService = dispatcherQueueSerivce;
+        _dispatcherQueueService = dispatcherQueueService;
+        _displayService = displayService;
     }
 
     public async Task InitializeAsync()
     {
         // 初期スクリーンバウンドを設定
-        ScreenBounds = ScreenInformation.GetScreensBounds();
+        ScreenBounds = _displayService.GetScreenBounds();
 
         // スクリーンサイズの監視を開始
         MonitorScreenChangesAsync();
 
         await Task.CompletedTask;
-
     }
 
     private async void MonitorScreenChangesAsync()
@@ -42,14 +43,14 @@ internal class ScreenChangedDetectionService : IScreenChangeDetectionService
         {
             await Task.Delay(DetectionIntervalMillisecond);
 
-            previousBounds = this.ScreenBounds;
-            ScreenBounds = ScreenInformation.GetScreensBounds();
+            previousBounds = ScreenBounds;
+            ScreenBounds = _displayService.GetScreenBounds();
 
             // スクリーンの増減をチェック
             if (previousBounds.Count < ScreenBounds.Count)
             {
                 // 増えた場合
-                for (int i = previousBounds.Count; i < ScreenBounds.Count; i++)
+                for (var i = previousBounds.Count; i < ScreenBounds.Count; i++)
                 {
                     OnScreenChanged(i, Rectangle.Empty, ScreenBounds[i], ScreenChangeType.ScreenAdded);
                 }
@@ -57,14 +58,14 @@ internal class ScreenChangedDetectionService : IScreenChangeDetectionService
             else if (ScreenBounds.Count < previousBounds.Count)
             {
                 // 減った場合
-                for (int i = ScreenBounds.Count; i < previousBounds.Count; i++)
+                for (var i = ScreenBounds.Count; i < previousBounds.Count; i++)
                 {
                     OnScreenChanged(i, previousBounds[i], Rectangle.Empty, ScreenChangeType.ScreenRemoved);
                 }
             }
 
             // スクリーンサイズに変更があるかチェック
-            for (int i = 0; i < Math.Min(previousBounds.Count, ScreenBounds.Count); i++)
+            for (var i = 0; i < Math.Min(previousBounds.Count, ScreenBounds.Count); i++)
             {
                 if (!ScreenBounds[i].Equals(previousBounds[i]))
                 {
@@ -81,18 +82,34 @@ internal class ScreenChangedDetectionService : IScreenChangeDetectionService
 
         var invokeResult = _dispatcherQueueService.TryInvoke(() => { ScreenChanged?.Invoke(this, args); });
 
-        if (!invokeResult) {
+        if (!invokeResult)
+        {
             _loggingService.WriteLogAsync(nameof(ScreenChangedDetectionService), nameof(OnScreenChanged), "Failed to execute delegates subscribed to the ScreenChanged event.", severity: LogSeverity.Error);
         }
     }
 
-    private ScreenChangedSize GetChangedFlags(Rectangle oldBounds, Rectangle newBounds)
+    private static ScreenChangedSize GetChangedFlags(Rectangle oldBounds, Rectangle newBounds)
     {
-        ScreenChangedSize flags = ScreenChangedSize.None;
-        if (oldBounds.X != newBounds.X) flags |= ScreenChangedSize.X;
-        if (oldBounds.Y != newBounds.Y) flags |= ScreenChangedSize.Y;
-        if (oldBounds.Width != newBounds.Width) flags |= ScreenChangedSize.Width;
-        if (oldBounds.Height != newBounds.Height) flags |= ScreenChangedSize.Height;
+        var flags = ScreenChangedSize.None;
+        if (oldBounds.X != newBounds.X)
+        {
+            flags |= ScreenChangedSize.X;
+        }
+
+        if (oldBounds.Y != newBounds.Y)
+        {
+            flags |= ScreenChangedSize.Y;
+        }
+
+        if (oldBounds.Width != newBounds.Width)
+        {
+            flags |= ScreenChangedSize.Width;
+        }
+
+        if (oldBounds.Height != newBounds.Height)
+        {
+            flags |= ScreenChangedSize.Height;
+        }
 
         return flags;
     }
