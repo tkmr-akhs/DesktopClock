@@ -110,6 +110,7 @@ public sealed partial class MainWindow : WindowEx
         TryApplyBlurredBackdrop(calendarWindow);
         calendarWindow.AppWindow.TitleBar.BackgroundColor = transparentColor;
         calendarWindow.AppWindow.TitleBar.InactiveBackgroundColor = transparentColor;
+        TrySetDesktopOwner(calendarWindow);
         calendarWindow.AppWindow.MoveInZOrderAtBottom();
         calendarWindow.ZOrderChanged += CalendarWindow_ZOrderChanged;
 
@@ -187,6 +188,21 @@ public sealed partial class MainWindow : WindowEx
         catch (Exception exp)
         {
             App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TryApplyBlurredBackdrop), "Blurred backdrop is not available.", LogSeverity.Warning, exp);
+        }
+    }
+
+    private static void TrySetDesktopOwner(WindowEx window)
+    {
+        try
+        {
+            if (!DesktopWindowOwnerHelper.TrySetDesktopOwner(window))
+            {
+                App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TrySetDesktopOwner), "Desktop owner window is not available.", LogSeverity.Warning);
+            }
+        }
+        catch (Exception exp)
+        {
+            App.GetService<ILoggingService>().WriteLog(nameof(MainWindow), nameof(TrySetDesktopOwner), "Desktop owner customization is not available.", LogSeverity.Warning, exp);
         }
     }
 
